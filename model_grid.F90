@@ -54,8 +54,12 @@
  type(esmf_field),  public              :: node_latitude_input_grid
                                            !< latitude of grid center, input grid
  type(esmf_field),  public              :: node_longitude_input_grid
-                                           !< longitude of grid center, input grid                                          
+                                           !< longitude of grid center, input grid
 
+  type(esmf_field),  public              :: zgrid_input_grid
+                                           !< esmf field to hold level height on input grid                                            
+  type(esmf_field),  public              :: zgrid_target_grid
+                                           !< esmf field to hold level height on target grid 
 
  type(esmf_field),  public              :: latitude_target_grid
                                            !< latitude of grid center, target grid
@@ -63,9 +67,20 @@
                                            !< longitude of grid center, target grid
                                            
  integer, parameter, public            :: n_diag_fields=4
- type(esmf_fieldbundle), public        :: input_diag_bundle     
- type(esmf_fieldbundle), public        :: target_diag_bundle                                      
- 
+ 										  !< number of fields read from the diag file
+ type(esmf_fieldbundle), public        :: input_diag_bundle    
+ 										  !< bundle to hold input diag fields
+ type(esmf_fieldbundle), public        :: target_diag_bundle
+ 										  !< bundle to hold target diag fields
+ 										  
+ integer, parameter, public            :: n_init_fields_2d=2
+ 										  !< number of 2d fields read from the init file
+ integer, parameter, public            :: n_init_fields_3d=2
+ 										  !< number of 3d fields read from the init file
+ type(esmf_fieldbundle), public        :: input_init_bundle_2d, input_init_bundle_3d  
+ 										  !< bundles to hold input init fields
+ type(esmf_fieldbundle), public        :: target_init_bundle_2d, target_init_bundle_3d
+ 										  !< bundles to hold target init fields
 
  public :: define_target_grid
  public :: define_input_grid
@@ -491,16 +506,128 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
         lat_src_ptr(i,j)=real(latitude(i,j),esmf_kind_r8)
       enddo
     enddo
-  print*, localpet, minval(lon_src_ptr), maxval(lon_src_ptr), &
- 			minval(lat_src_ptr), maxval(lat_src_ptr)			
+				
   nullify(lon_src_ptr)
   nullify(lat_src_ptr)
 
+ print*,"- CALL GridAddCoord FOR TARGET GRID."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_CORNER, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    call error_handler("IN GridAddCoord", error)
+
+ print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
+
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_CORNER, &
+                        coordDim=1, &
+                        farrayPtr=lon_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    call error_handler("IN GridGetCoord", error)
+
+ print*,"- CALL GridGetCoord FOR INPUT GRID Y-COORD."
+
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_CORNER, &
+                        coordDim=2, &
+                        computationalLBound=clb, &
+                        computationalUBound=cub, &
+                        farrayPtr=lat_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    call error_handler("IN GridGetCoord", error)
+    
+ call get_cell_corners(latitude, longitude, lat_src_ptr, lon_src_ptr, dx, clb, cub)
+
+ nullify(lon_src_ptr)
+ nullify(lat_src_ptr)
  deallocate(longitude)
  deallocate(latitude)
 
-
  end subroutine define_target_grid
+
+ !> For grids with equal cell sizes (e.g., lambert conformal), get lat and on of the grid 
+!! cell corners 
+!!
+!! @param [in]  latitude  2d array of grid latitude
+!! @param [in]  longitude 2d array of grid longitude
+!! @param [in]  dx grid cell size in meters
+!! @param [in]  clb  computational lower bound as returned from ESMF_GridGetCoord
+!! @param [in]  cub  computational upper bound as returned from ESMF_GridGetCoord
+!! @param [out] latitude_sw  returned latitude at sw corner of grid cells
+!! @param [out]elongitude_sw  returned longitude at sw corner of grid cells
+!! @author Larissa Reames CIWRO/NSSL/FRDD
+ 
+  subroutine get_cell_corners( latitude, longitude, latitude_sw, longitude_sw, dx,clb,cub)
+  implicit none
+
+  real(esmf_kind_r8), intent(in)    :: latitude(i_target,j_target)
+  real(esmf_kind_r8), intent(inout), pointer   :: latitude_sw(:,:)
+  real(esmf_kind_r8), intent(in)    :: longitude(i_target, j_target)
+  real(esmf_kind_r8), intent(inout), pointer   :: longitude_sw(:,:)
+  real(esmf_kind_r8), intent(in)    :: dx !grid cell side size (m)
+
+  integer, intent(in) :: clb(2), cub(2)
+
+  real(esmf_kind_r8)                :: lat1, lon1, lat2, lon2, d, brng
+
+
+  real(esmf_kind_r8), parameter    :: pi = 3.14159265359
+  real(esmf_kind_r8), parameter    :: R =  6370000.0
+  real(esmf_kind_r8), parameter    :: bearingInDegrees = 135.0
+
+  integer                           :: i, j, e
+
+  d = sqrt((dx**2.0_esmf_kind_r8)/2.0_esmf_kind_r8)
+
+  do j = clb(2),cub(2)
+   do i = clb(1), cub(1)
+         if (j == jp1_target .and. i == ip1_target) then
+       lat1 = latitude(i_target,j_target)  * ( pi / 180.0_esmf_kind_r8 )
+       lon1 = longitude(i_target,j_target) * ( pi / 180.0_esmf_kind_r8 )
+             brng = 315.0_esmf_kind_r8 * pi / 180.0_esmf_kind_r8
+             lat2 = asin( sin( lat1 ) * cos( d / R ) + cos( lat1 ) * sin( d / R ) * cos( brng ) );
+             lon2= lon1 + atan2( sin( brng ) * sin( d / R ) * cos( lat1 ), cos( d / R ) - sin( lat1 ) * sin( lat2 ) );
+             latitude_sw(ip1_target,jp1_target) = lat2 * 180.0_esmf_kind_r8 / pi
+             longitude_sw(ip1_target,jp1_target) = lon2 * 180.0_esmf_kind_r8 / pi
+             cycle
+         endif
+         
+     if (i == ip1_target) then
+       brng = 225.0_esmf_kind_r8 * pi / 180.0_esmf_kind_r8
+       lat1 = latitude(i_target,j)  * ( pi / 180.0_esmf_kind_r8 )
+       lon1 = longitude(i_target,j) * ( pi / 180.0_esmf_kind_r8 )
+       lat2 = asin( sin( lat1 ) * cos( d / R ) + cos( lat1 ) * sin( d / R ) * cos( brng ) );
+       lon2= lon1 + atan2( sin( brng ) * sin( d / R ) * cos( lat1 ), cos( d / R ) - sin( lat1 ) * sin( lat2 ) );
+       latitude_sw(ip1_target,j) = lat2 * 180.0_esmf_kind_r8 / pi
+       longitude_sw(ip1_target,j) = lon2 * 180.0_esmf_kind_r8 / pi
+       cycle
+     endif
+
+     if (j == jp1_target) then
+       brng = 45.0_esmf_kind_r8 * pi / 180.0_esmf_kind_r8
+       lat1 = latitude(i,j_target)  * ( pi / 180.0_esmf_kind_r8 )
+       lon1 = longitude(i,j_target) * ( pi / 180.0_esmf_kind_r8 )
+       lat2 = asin( sin( lat1 ) * cos( d / R ) + cos( lat1 ) * sin( d / R ) * cos( brng ) );
+       lon2= lon1 + atan2( sin( brng ) * sin( d / R ) * cos( lat1 ), cos( d / R ) - sin( lat1 ) * sin( lat2 ) );
+       latitude_sw(i,jp1_target) = lat2 * 180.0_esmf_kind_r8 / pi
+       longitude_sw(i,jp1_target) = lon2 * 180.0_esmf_kind_r8 / pi
+       cycle
+     endif
+
+     lat1 = latitude(i,j)  * ( pi / 180.0_esmf_kind_r8 )
+     lon1 = longitude(i,j) * ( pi / 180.0_esmf_kind_r8 )
+     
+     brng = bearingInDegrees * ( pi / 180.0_esmf_kind_r8 );
+     lat2 = asin( sin( lat1 ) * cos( d / R ) + cos( lat1 ) * sin( d / R ) * cos( brng ) );
+     lon2= lon1 + atan2( sin( brng ) * sin( d / R ) * cos( lat1 ), cos( d / R ) - sin( lat1 ) * sin( lat2 ) );
+
+     latitude_sw(i,j) = lat2 * 180.0_esmf_kind_r8 / pi
+     longitude_sw(i,j) = lon2 * 180.0_esmf_kind_r8 / pi
+     
+   enddo
+ enddo
+
+ end subroutine get_cell_corners
  
  subroutine cleanup_input_target_grid_data
  
