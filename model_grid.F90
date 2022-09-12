@@ -66,21 +66,62 @@
  type(esmf_field),  public              :: longitude_target_grid
                                            !< longitude of grid center, target grid
                                            
- integer, parameter, public            :: n_diag_fields=4
+ integer, public           			   :: n_diag_fields
  										  !< number of fields read from the diag file
  type(esmf_fieldbundle), public        :: input_diag_bundle    
  										  !< bundle to hold input diag fields
  type(esmf_fieldbundle), public        :: target_diag_bundle
  										  !< bundle to hold target diag fields
  										  
- integer, parameter, public            :: n_init_fields_2d=2
- 										  !< number of 2d fields read from the init file
- integer, parameter, public            :: n_init_fields_3d=2
- 										  !< number of 3d fields read from the init file
- type(esmf_fieldbundle), public        :: input_init_bundle_2d, input_init_bundle_3d  
- 										  !< bundles to hold input init fields
- type(esmf_fieldbundle), public        :: target_init_bundle_2d, target_init_bundle_3d
- 										  !< bundles to hold target init fields
+ integer, public            		   :: n_hist_fields_2d_patch
+ 										  !< number of 2d fields read from the hist file
+ 										  !< to use with patch regridding
+ integer, public            		   :: n_hist_fields_2d_cons
+ 										  !< number of 2d fields read from the hist file
+ 										  !< to use with conservative regridding
+ integer, public            		   :: n_hist_fields_2d_nstd
+ 										  !< number of 2d fields read from the hist file
+ 										  !< to use with nearest source to destination 
+ 										  !< regridding
+ integer, public            		   :: n_hist_fields_3d_nz
+ 										  !< number of 3d fields read from the hist file
+ 										  !< with vertical dimension nVertLevels
+ integer, public            		   :: n_hist_fields_3d_nzp1
+ 										  !< number of 3d fields read from the hist file
+ 										  !< with vertical dimension nVertLevelsp1
+ character(50), allocatable, public    :: target_diag_names(:), &
+ 										  target_hist_names_2d_cons(:), &
+                                    	  target_hist_names_2d_nstd(:), &
+                                    	  target_hist_names_2d_patch(:), &
+                                    	  target_hist_names_3d_nzp1(:), &
+                                    	  target_hist_names_3d_nz(:)
+                                    	  !< Arrays to hold target field names
+ character(50), allocatable, public    :: target_diag_units(:), &
+ 										  target_hist_units_2d_cons(:), &
+                                    	  target_hist_units_2d_nstd(:), &
+                                    	  target_hist_units_2d_patch(:), &
+                                    	  target_hist_units_3d_nzp1(:), &
+                                    	  target_hist_units_3d_nz(:)
+                                    	  !< Arrays to hold target field units
+ character(200), allocatable, public   :: target_diag_longname(:), &
+ 										  target_hist_longname_2d_cons(:), &
+                                    	  target_hist_longname_2d_nstd(:), &
+                                    	  target_hist_longname_2d_patch(:), &
+                                    	  target_hist_longname_3d_nzp1(:), &
+                                    	  target_hist_longname_3d_nz(:)
+                                    	  !< Arrays to hold target field longname                                   	  
+ type(esmf_fieldbundle), public        :: input_hist_bundle_2d_patch, &
+ 										  input_hist_bundle_2d_cons, &
+ 										  input_hist_bundle_2d_nstd, &
+ 										  input_hist_bundle_3d_nz, &  
+ 										  input_hist_bundle_3d_nzp1
+ 										  !< bundles to hold input hist fields
+ type(esmf_fieldbundle), public        :: target_hist_bundle_2d_patch, &
+ 										  target_hist_bundle_2d_cons, &
+ 										  target_hist_bundle_2d_nstd, &
+ 										  target_hist_bundle_3d_nz, &  
+ 										  target_hist_bundle_3d_nzp1
+ 										  !< bundles to hold target hist fields
 
  public :: define_target_grid
  public :: define_input_grid
@@ -98,7 +139,7 @@
 
  use mpi
  use netcdf
- use program_setup, only       : init_file_input_grid
+ use program_setup, only       : grid_file_input_grid
  implicit none
 
  character(len=500)           :: the_file, dimname
@@ -122,7 +163,7 @@
  real(esmf_kind_r8), parameter         :: PI=4.D0*DATAN(1.D0)
 
 
- the_file = init_file_input_grid
+ the_file = grid_file_input_grid
 
 
  print*,'- OPEN MPAS INPUT FILE: ',trim(the_file)
@@ -142,7 +183,7 @@
  error = nf90_inq_dimid(ncid,'nVertices',id_dim)
  call netcdf_err(error, 'reading nVertices id')
  
-error=nf90_inquire_dimension(ncid,id_dim,len=nVertices)
+ error=nf90_inquire_dimension(ncid,id_dim,len=nVertices)
  call netcdf_err(error, 'reading nVertices')
  
  nVert_input = nVertices
@@ -154,7 +195,7 @@ error=nf90_inquire_dimension(ncid,id_dim,len=nVertices)
  error=nf90_inquire_dimension(ncid,id_dim,len=nz_input)
  call netcdf_err(error, 'reading nVertLevels')
  
-  print*,'- READ nVertLevelsP1'
+ print*,'- READ nVertLevelsP1'
  error = nf90_inq_dimid(ncid,'nVertLevelsP1',id_dim)
  call netcdf_err(error, 'reading nVertLevelsP1 id')
  
@@ -276,7 +317,7 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
 			
  			elemTypes2(j) = elemTypes2(j) + 1
  			
- 			!This will have duplicates by definition
+ 			!This will have duplicates by defhistion
  			temp = FINDLOC(nodeIDS_temp, vertOnCell(n,i))
  			elementConn_temp(nVertThis) = temp(1)
  			
@@ -631,7 +672,8 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  
  subroutine cleanup_input_target_grid_data
  
- use program_setup, only    : data_to_interp
+ use program_setup, only    : interp_diag, interp_hist
+ 
 
  implicit none
 
@@ -649,7 +691,7 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  call ESMF_FieldDestroy(latitude_target_grid, rc=rc)
  call ESMF_FieldDestroy(longitude_target_grid, rc=rc)
 
- if (data_to_interp == 'diag') then
+ if (interp_diag) then
  	allocate(fields(n_diag_fields))
  	call ESMF_FieldBundleGet(input_diag_bundle, fieldList=fields, & 
  						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
@@ -668,6 +710,117 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  	enddo
  	
  	call ESMF_FieldBundleDestroy(target_diag_bundle)
+ 	deallocate(fields)
+ endif
+ 
+ if (n_hist_fields_2d_cons>0) then
+ 	allocate(fields(n_hist_fields_2d_cons))
+ 	call ESMF_FieldBundleGet(input_hist_bundle_2d_cons, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_2d_cons
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(input_hist_bundle_2d_cons)
+ 	
+ 	call ESMF_FieldBundleGet(target_hist_bundle_2d_cons, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_2d_cons
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(target_hist_bundle_2d_cons)
+ 	deallocate(fields)
+ endif
+ 
+  if (n_hist_fields_2d_nstd>0) then
+ 	allocate(fields(n_hist_fields_2d_nstd))
+ 	call ESMF_FieldBundleGet(input_hist_bundle_2d_nstd, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_2d_nstd
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(input_hist_bundle_2d_nstd)
+ 	
+ 	call ESMF_FieldBundleGet(target_hist_bundle_2d_nstd, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_2d_nstd
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(target_hist_bundle_2d_nstd)
+ 	deallocate(fields)
+ endif
+ 
+ if (n_hist_fields_2d_patch>0) then
+ 	allocate(fields(n_hist_fields_2d_patch))
+ 	call ESMF_FieldBundleGet(input_hist_bundle_2d_patch, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_2d_patch
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(input_hist_bundle_2d_patch)
+ 	
+ 	call ESMF_FieldBundleGet(target_hist_bundle_2d_patch, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_2d_patch
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(target_hist_bundle_2d_patch)
+ 	deallocate(fields)
+ endif
+ 
+  if (n_hist_fields_3d_nz>0) then
+ 	allocate(fields(n_hist_fields_3d_nz))
+ 	call ESMF_FieldBundleGet(input_hist_bundle_3d_nz, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_3d_nz
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(input_hist_bundle_3d_nz)
+ 	
+ 	call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_3d_nz
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(target_hist_bundle_3d_nz)
+ 	deallocate(fields)
+ endif
+ 
+ if (n_hist_fields_3d_nzp1>0) then
+ 	allocate(fields(n_hist_fields_3d_nzp1))
+ 	call ESMF_FieldBundleGet(input_hist_bundle_3d_nzp1, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_3d_nzp1
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(input_hist_bundle_3d_nzp1)
+ 	
+ 	call ESMF_FieldBundleGet(target_hist_bundle_3d_nzp1, fieldList=fields, & 
+ 						  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+ 						  rc=rc) 
+ 	do i = 1, n_hist_fields_3d_nzp1
+ 		call ESMF_FieldDestroy(fields(i), rc=rc)
+ 	enddo
+ 	
+ 	call ESMF_FieldBundleDestroy(target_hist_bundle_3d_nzp1)
+ 	deallocate(fields)
  endif
  	
 

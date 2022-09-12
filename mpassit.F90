@@ -26,7 +26,7 @@
 
  !use interp, only              : interp_driver
 
- use program_setup, only       : read_setup_namelist, data_to_interp
+ use program_setup, only       : read_setup_namelist !, interp_diag, interp_hist
 
  use model_grid, only          : define_target_grid,  &
                                  define_input_grid, &
