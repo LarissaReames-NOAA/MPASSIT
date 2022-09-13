@@ -21,6 +21,7 @@
  use model_grid, only             : input_grid, target_grid, &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
+                                    nsoil_input, &
                                     cell_latitude_input_grid, &
                                     cell_longitude_input_grid, &
                                     zgrid_input_grid, &
@@ -33,23 +34,27 @@
  									input_hist_bundle_2d_patch, &
  									input_hist_bundle_3d_nz, &
  									input_hist_bundle_3d_nzp1, &
+ 									input_hist_bundle_soil, &
  									target_hist_bundle_2d_patch, &
  									target_hist_bundle_2d_cons, &
  									target_hist_bundle_2d_nstd, &
  									target_hist_bundle_3d_nz, &  
  									target_hist_bundle_3d_nzp1, &
+ 									target_hist_bundle_soil, &
  									target_diag_names, &
  									target_hist_names_2d_cons, &
                                     target_hist_names_2d_nstd, &
                                     target_hist_names_2d_patch, &
                                     target_hist_names_3d_nz, &
                                     target_hist_names_3d_nzp1, &
+                                    target_hist_names_soil, &
  									n_diag_fields, nCellsPerPET, &
  									n_hist_fields_2d_cons, &
  									n_hist_fields_2d_nstd, &
  									n_hist_fields_2d_patch, &
  									n_hist_fields_3d_nz, &
- 									n_hist_fields_3d_nzp1
+ 									n_hist_fields_3d_nzp1, &
+ 									n_hist_fields_soil
 
  implicit none
 
@@ -100,7 +105,6 @@
  	                                 regridmethod=method, &
  	                                 routehandle=rh_patch, &
  	                                 srcTermProcessing=isrctermprocessing, &
- 	                                 extrapMethod=ESMF_EXTRAPMETHOD_NONE, &
  	                                 rc=rc)
  	                                 
  	 if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
@@ -227,6 +231,12 @@
     call ESMF_FieldBundleRegrid(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, rh_nstd, rc=rc)
  	 if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
     	call error_handler("IN FieldBundleRegrid", rc)
+    
+    if (n_hist_fields_soil>0) then	
+		call ESMF_FieldBundleRegrid(input_hist_bundle_soil, target_hist_bundle_soil, rh_nstd, rc=rc)
+		 if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+			call error_handler("IN FieldBundleRegrid", rc)
+	endif
     	
 	print*,"- CALL FieldRegridRelease."
 	call ESMF_FieldBundleRegridRelease(routehandle=rh_patch, rc=rc)
@@ -317,6 +327,28 @@
 	
 		target_hist_bundle_2d_patch = ESMF_FieldBundleCreate(fieldList=fields, & 
 										name="target init 2d patch data", rc=rc)
+		if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+			call error_handler("IN FieldBundleCreate", rc)
+		deallocate(fields)
+	endif
+	
+	if (n_hist_fields_soil>0) then
+    	allocate(fields(n_hist_fields_soil))	
+		do i = 1, n_hist_fields_soil
+			print*, "- INIT FIELD ", target_hist_names_soil(i)
+			fields(i) = ESMF_FieldCreate(target_grid, & 
+								typekind=ESMF_TYPEKIND_R8, &
+								staggerloc=ESMF_STAGGERLOC_CENTER, &
+								name=target_hist_names_soil(i), &
+								ungriddedLBound=(/1/), &
+								ungriddedUBound=(/nsoil_input/), rc=rc)
+			if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+			call error_handler("IN FieldCreate", rc)
+		enddo
+	
+	
+		target_hist_bundle_soil= ESMF_FieldBundleCreate(fieldList=fields, & 
+										name="target init soil data", rc=rc)
 		if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
 			call error_handler("IN FieldBundleCreate", rc)
 		deallocate(fields)

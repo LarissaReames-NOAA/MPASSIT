@@ -24,6 +24,7 @@
  use model_grid, only             : input_grid,        &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
+                                    nsoil_input, &
                                     cell_latitude_input_grid, &
                                     cell_longitude_input_grid, &
                                     zgrid_input_grid, &
@@ -34,29 +35,34 @@
                                     input_hist_bundle_2d_nstd, &
                                     input_hist_bundle_3d_nz, &
                                     input_hist_bundle_3d_nzp1, &
+                                    input_hist_bundle_soil, &
                                     target_hist_names_2d_cons, &
                                     target_hist_names_2d_nstd, &
                                     target_hist_names_2d_patch, &
                                     target_hist_names_3d_nz, &
                                     target_hist_names_3d_nzp1, &
+                                    target_hist_names_soil, &
                                     target_diag_units, &
  									target_hist_units_2d_cons, &
                                     target_hist_units_2d_nstd, &
                                     target_hist_units_2d_patch, &
                                     target_hist_units_3d_nzp1, &
                                     target_hist_units_3d_nz, &
+                                    target_hist_units_soil, &
                                     target_diag_longname, &
  									target_hist_longname_2d_cons, &
                                     target_hist_longname_2d_nstd, &
                                     target_hist_longname_2d_patch, &
                                     target_hist_longname_3d_nzp1, &
                                     target_hist_longname_3d_nz, &
+                                    target_hist_longname_soil, &
                                     n_diag_fields, &
                                     n_hist_fields_2d_cons, &
                                     n_hist_fields_2d_nstd, &
                                     n_hist_fields_2d_patch, &
                                     n_hist_fields_3d_nz, &
                                     n_hist_fields_3d_nzp1, &
+                                    n_hist_fields_soil, &
                                     elemIDs, nCellsPerPET, &
                                     nodeIDs
 
@@ -287,9 +293,7 @@
 		do j = 1, nCellsPerPET
 			varptr(j) = dummy2(elemIDs(j),1)
 		enddo
-	
 
-	
 		print*, localpet, minval(varptr), maxval(varptr)	
 		nullify(varptr)
 	 enddo
@@ -402,6 +406,58 @@
 		nullify(varptr)
 	 enddo
 	 deallocate(dummy2)
+	 deallocate(fields)
+ endif
+ 
+!---------------------------------------------------------------------------
+! Initialize 3d esmf soil fields for bilinear/patch interpolation
+!---------------------------------------------------------------------------
+
+ if (n_hist_fields_soil > 0) then
+ 	allocate(fields(n_hist_fields_soil))
+ 	allocate(target_hist_units_soil(n_hist_fields_soil))
+    allocate(target_hist_longname_soil(n_hist_fields_soil))
+	 call ESMF_FieldBundleGet(input_hist_bundle_soil, fieldList=fields, & 
+							  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+							  rc=rc)
+	 if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+		 call error_handler("IN FieldBundleGet", rc)
+	 
+	 call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+	 if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+		 call error_handler("IN MeshGet", rc)
+ 
+	 allocate(dummy3(nsoil_input,nCells_input,1))
+ 
+	 do i = 1,n_hist_fields_soil
+
+		call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+		if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+		 call error_handler("IN FieldGet", rc)
+	
+		call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+		if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+		 call error_handler("IN FieldGet", rc)
+	
+		print*,"- READ ", trim(vname)
+		error=nf90_inq_varid(ncid, trim(vname), id_var)
+		call netcdf_err(error, 'reading field id' )
+		error=nf90_get_var(ncid, id_var, dummy3)
+		call netcdf_err(error, 'reading field' )
+		error=nf90_get_att(ncid,id_var,'units',target_hist_units_soil(i))
+		call netcdf_err(error, 'reading field units' )
+		error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_soil(i))
+		call netcdf_err(error, 'reading field long_name' )
+		
+		print*,"- SET ON MESH ", trim(vname)
+		do j = 1, nCellsPerPET
+			varptr2(j,:) = dummy3(:,elemIDs(j),1)
+		enddo
+
+		print*, localpet, minval(varptr2), maxval(varptr2)	
+		nullify(varptr2)
+	 enddo
+	 deallocate(dummy3)
 	 deallocate(fields)
  endif
 
@@ -531,6 +587,7 @@
  									 input_hist_names_2d_patch(:), &
  									 input_hist_names_3d(:), &
  								     input_hist_names_3d_nz(:), &
+ 								     input_hist_names_soil(:), &
  								     input_hist_names_3d_nzp1(:), &
  								     target_hist_names_2d(:), &
  								     target_hist_names_3d(:)
@@ -551,6 +608,8 @@
  	call read_varlist(fname,n_hist_fields_2d,input_hist_names_2d, target_hist_names_2d)
  	fname = 'histlist_3d'
  	call read_varlist(fname,n_hist_fields_3d,input_hist_names_3d, target_hist_names_3d)
+ 	fname = 'histlist_soil'
+ 	call read_varlist(fname,n_hist_fields_soil,input_hist_names_soil, target_hist_names_soil)
  	
  	do i = 1, n_hist_fields_2d
  		if (any(cons_vars == input_hist_names_2d(i))) then
@@ -568,6 +627,7 @@
  	allocate(target_hist_names_2d_cons(n_hist_fields_2d_cons))
  	allocate(target_hist_names_2d_nstd(n_hist_fields_2d_nstd))
  	allocate(target_hist_names_2d_patch(n_hist_fields_2d_patch))
+
  	
  	j = 0
  	k = 0
@@ -687,6 +747,30 @@
 			
 		deallocate(fields)
 	endif
+	
+	if (n_hist_fields_soil > 0) then
+		allocate(fields(n_hist_fields_soil))
+		do i = 1, n_hist_fields_soil
+	
+			print*, "- INIT FIELD ", input_hist_names_soil(i)
+
+			fields(i) = ESMF_FieldCreate(input_grid, & 
+								typekind=ESMF_TYPEKIND_R8, &
+								meshloc=ESMF_MESHLOC_ELEMENT, &
+								name=input_hist_names_soil(i), & 
+								ungriddedLBound=(/1/), &
+								ungriddedUBound=(/nsoil_input/), rc=rc)
+			if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+			call error_handler("IN FieldCreate", rc)
+		enddo
+	
+		input_hist_bundle_soil = ESMF_FieldBundleCreate(fieldList=fields, & 
+										name="input hist soil data", rc=rc)
+		if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+			call error_handler("IN FieldBundleCreate", rc)
+			
+		deallocate(fields)
+	endif
 
 	if (n_hist_fields_3d_nz > 0) then
 		allocate(fields(n_hist_fields_3d_nz))
@@ -742,6 +826,7 @@
  	deallocate(input_hist_names_2d_patch)
  	deallocate(input_hist_names_3d_nz)
  	deallocate(input_hist_names_3d_nzp1)
+ 	deallocate(input_hist_names_soil)
  	
  
  end subroutine init_input_hist_fields

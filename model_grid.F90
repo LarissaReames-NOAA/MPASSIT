@@ -22,6 +22,8 @@
                                            !< number of input grid atm layers
  integer, public                        :: nzp1_input
                                            !< number of input grid atm layer interfaces
+ integer, public                        :: nsoil_input
+                                           !< number of input soil levels
                                                                                      
  integer, public                        :: i_target
                                            !< i dimension of each global tile, 
@@ -65,6 +67,8 @@
                                            !< latitude of grid center, target grid
  type(esmf_field),  public              :: longitude_target_grid
                                            !< longitude of grid center, target grid
+ real(esmf_kind_r8), allocatable , public :: zs_target_grid(:,:)
+ 										  !< soil center depth, target grid
                                            
  integer, public           			   :: n_diag_fields
  										  !< number of fields read from the diag file
@@ -89,38 +93,45 @@
  integer, public            		   :: n_hist_fields_3d_nzp1
  										  !< number of 3d fields read from the hist file
  										  !< with vertical dimension nVertLevelsp1
+  integer, public            		   :: n_hist_fields_soil
+ 										  !< number of soil fields read from the hist file
  character(50), allocatable, public    :: target_diag_names(:), &
  										  target_hist_names_2d_cons(:), &
                                     	  target_hist_names_2d_nstd(:), &
                                     	  target_hist_names_2d_patch(:), &
                                     	  target_hist_names_3d_nzp1(:), &
-                                    	  target_hist_names_3d_nz(:)
+                                    	  target_hist_names_3d_nz(:), &
+                                    	  target_hist_names_soil(:)
                                     	  !< Arrays to hold target field names
  character(50), allocatable, public    :: target_diag_units(:), &
  										  target_hist_units_2d_cons(:), &
                                     	  target_hist_units_2d_nstd(:), &
                                     	  target_hist_units_2d_patch(:), &
                                     	  target_hist_units_3d_nzp1(:), &
-                                    	  target_hist_units_3d_nz(:)
+                                    	  target_hist_units_3d_nz(:), &
+                                    	  target_hist_units_soil(:)
                                     	  !< Arrays to hold target field units
  character(200), allocatable, public   :: target_diag_longname(:), &
  										  target_hist_longname_2d_cons(:), &
                                     	  target_hist_longname_2d_nstd(:), &
                                     	  target_hist_longname_2d_patch(:), &
                                     	  target_hist_longname_3d_nzp1(:), &
-                                    	  target_hist_longname_3d_nz(:)
+                                    	  target_hist_longname_3d_nz(:), &
+                                    	  target_hist_longname_soil(:)
                                     	  !< Arrays to hold target field longname                                   	  
  type(esmf_fieldbundle), public        :: input_hist_bundle_2d_patch, &
  										  input_hist_bundle_2d_cons, &
  										  input_hist_bundle_2d_nstd, &
  										  input_hist_bundle_3d_nz, &  
- 										  input_hist_bundle_3d_nzp1
+ 										  input_hist_bundle_3d_nzp1, &
+ 										  input_hist_bundle_soil
  										  !< bundles to hold input hist fields
  type(esmf_fieldbundle), public        :: target_hist_bundle_2d_patch, &
  										  target_hist_bundle_2d_cons, &
  										  target_hist_bundle_2d_nstd, &
  										  target_hist_bundle_3d_nz, &  
- 										  target_hist_bundle_3d_nzp1
+ 										  target_hist_bundle_3d_nzp1, &
+ 										  target_hist_bundle_soil
  										  !< bundles to hold target hist fields
 
  public :: define_target_grid
@@ -208,6 +219,13 @@
  
  error=nf90_inquire_dimension(ncid,id_dim,len=maxEdges)
  call netcdf_err(error, 'reading maxEdges')
+ 
+ print*,'- READ nSoilLevels'
+ error = nf90_inq_dimid(ncid,'nSoilLevels',id_dim)
+ call netcdf_err(error, 'reading nSoilLevels id')
+ 
+ error=nf90_inquire_dimension(ncid,id_dim,len=nsoil_input)
+ call netcdf_err(error, 'reading nSoilLevels')
 
  
  allocate(latCell(nCells))
@@ -217,6 +235,7 @@
  allocate(lonVert(nVertices))
  
  allocate(vertOnCell(maxEdges,nCells))
+ allocate(zs_target_grid(nsoil_input,1))
  
  
  ! GET CELL CENTER LAT/LON
@@ -253,6 +272,15 @@
  print*,'- READ LATVERTEX'
  error=nf90_get_var(ncid, id_var, latVert)
  call netcdf_err(error, 'reading latVertex')
+ 
+  ! SOIL CENTER DEPTHS
+ print*,'- READ ZS ID'
+ error=nf90_inq_varid(ncid, 'zs', id_var)
+ call netcdf_err(error, 'reading zs id')
+
+ print*,'- READ ZS'
+ error=nf90_get_var(ncid, id_var, zs_target_grid)
+ call netcdf_err(error, 'reading ZS')
 
 
  print*,"- NUMBER OF CELLS ON INPUT GRID ", nCells_input
