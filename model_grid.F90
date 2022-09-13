@@ -23,8 +23,17 @@
  integer, public                        :: nzp1_input
                                            !< number of input grid atm layer interfaces
  integer, public                        :: nsoil_input
-                                           !< number of input soil levels
-                                                                                     
+                                           !< number of input soil levels                                           
+ real, public                           :: dx
+                                           !< grid size (m) of target grid
+ character(50), public                  :: start_time
+                                           !< simulation start time input data
+ integer, public                        :: lsm_scheme
+                                           !< land surface scheme input data
+ integer, public                        :: mp_scheme
+                                           !< microphysics scheme input data
+ integer, public                        :: conv_scheme
+                                           !< convection scheme input data 
  integer, public                        :: i_target
                                            !< i dimension of each global tile, 
                                            !! or of a nest, target grid.
@@ -226,7 +235,7 @@
  
  error=nf90_inquire_dimension(ncid,id_dim,len=nsoil_input)
  call netcdf_err(error, 'reading nSoilLevels')
-
+ 
  
  allocate(latCell(nCells))
  allocate(lonCell(nCells))
@@ -446,7 +455,6 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  real(esmf_kind_r8), allocatable       :: latitude(:,:), longitude(:,:)
  integer                               :: ncid,id_var, id_dim 
  real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:)
- real(esmf_kind_r8)                    :: dx
 
 
  the_file = file_target_grid

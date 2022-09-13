@@ -25,6 +25,8 @@
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
                                     nsoil_input, &
+                                    start_time, lsm_scheme, &
+                                    mp_scheme, conv_scheme, &
                                     cell_latitude_input_grid, &
                                     cell_longitude_input_grid, &
                                     zgrid_input_grid, &
@@ -227,7 +229,7 @@
  subroutine read_input_hist_data(localpet)
 
  character(len=500)              :: the_file
- character(len=50)               :: vname
+ character(len=50)               :: vname, att_text
  
  integer, intent(in)             :: localpet
  integer                         :: error, ncid, rc
@@ -244,9 +246,49 @@
 
  print*,"- READ INPUT HIST DATA."
 
+
  the_file = trim(hist_file_input_grid)
  error=nf90_open(trim(the_file),nf90_nowrite,ncid)
  call netcdf_err(error, 'opening: '//trim(the_file) )
+ 
+!---------------------------------------------------------------------------
+! Read global attributes for use when creating output file
+!---------------------------------------------------------------------------
+ 
+ print*,'- READ GLOBAL ATTRIBUTE LSM SCHEME'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_lsm_scheme',att_text)
+ call netcdf_err(error, 'reading config_lsm_scheme')
+ if (trim(att_text) == 'noah') then
+ 	lsm_scheme = 2
+ elseif (trim(att_text) == 'ruc') then
+ 	lsm_scheme = 3
+ endif
+ 
+ print*,'- READ GLOBAL ATTRIBUTE START TIME'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_start_time',start_time)
+ call netcdf_err(error, 'reading config_start_time')
+ 
+ print*,'- READ GLOBAL ATTRIBUTE LMP SCHEME'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_microp_scheme',att_text)
+ call netcdf_err(error, 'reading config_microp_scheme')
+  if (trim(att_text) == 'mp_thompson') then
+ 	mp_scheme = 8
+ elseif (trim(att_text) == 'nssl') then
+ 	mp_scheme = 17
+ endif
+ 
+ 
+ print*,'- READ GLOBAL ATTRIBUTE CONVECTION SCHEME'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_convection_scheme',conv_scheme)
+ call netcdf_err(error, 'reading config_conv_scheme')
+ 
+  if (trim(att_text) == 'cu_ntiedke') then
+ 	conv_scheme = 16
+ elseif (trim(att_text) == 'cu_kainfritsch') then
+ 	conv_scheme = 1
+ elseif (trim(att_text) == 'cu_grellfreitas') then
+ 	conv_scheme = 3
+ endif
 
 
 !---------------------------------------------------------------------------

@@ -26,6 +26,9 @@
                                      ip1_target, jp1_target, &
                                      nz_input, nzp1_input, &
                                      nsoil_input, &
+                                     dx, start_time, &
+                                     lsm_scheme, mp_scheme, &
+                                     conv_scheme, &
                                      longitude_target_grid, &
                                      latitude_target_grid, &
                                      zs_target_grid, &
@@ -130,7 +133,34 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING VERTICALP1 DIMENSION' )
    error = nf90_def_dim(ncid, 'soil_layers_stag', nsoil_input, dim_soil)
    call netcdf_err(error, 'DEFINING VERTICALP1 DIMENSION' )
+   
+ !--- define global attributes
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'WEST-EAST_GRID_DIMENSION', i_target)
+   call netcdf_err(error, 'DEFINING WEST-EAST GRID DIMENSION GLOBAL ATTRIBUTE')
+   
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'NORTH-SOUTH_GRID_DIMENSION', j_target)
+   call netcdf_err(error, 'DEFINING NORTH-SOUTH GRID DIMENSION GLOBAL ATTRIBUTE')
+   
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'BOTTOM-TOP_GRID_DIMENSION', nz_input)
+   call netcdf_err(error, 'DEFINING BOTTOM-TOP GRID DIMENSION GLOBAL ATTRIBUTE')
+   
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'SIMULATION_START_DATE', start_time)
+   call netcdf_err(error, 'DEFINING SUMLATION START DATE GLOBAL ATTRIBUTE')
+   
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'START_DATE', start_time)
+   call netcdf_err(error, 'DEFINING START DATE GLOBAL ATTRIBUTE')
+   
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'DX', dx)
+   call netcdf_err(error, 'DEFINING DX GLOBAL ATTRIBUTE')
+   
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'SF_SURFACE_PHYSICS', lsm_scheme)
+   call netcdf_err(error, 'DEFINING SF SURFACE PHYSICS GLOBAL ATTRIBUTE')
 
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'MP_PHYSICS', mp_scheme)
+   call netcdf_err(error, 'DEFINING MP PHYSICS GLOBAL ATTRIBUTE')
+   
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'CU_PHYSICS', conv_scheme)
+   call netcdf_err(error, 'DEFINING CU PHYSICS GLOBAL ATTRIBUTE')
 
 !--- define fields
 
