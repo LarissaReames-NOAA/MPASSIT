@@ -16,8 +16,8 @@
  character(len=500), public      :: hist_file_input_grid = "NULL" !< Full path of input history MPAS data
  character(len=500), public      :: file_target_grid = "NULL" !<Full path of file containing target grid information
  character(len=500), public      :: output_file = "NULL" !< Full path of output file
- logical, public      		 :: interp_diag = .false. !< Read data from diag file?
- logical, public       		 :: interp_hist = .false. !< Read data from hist file?
+ logical, public                 :: interp_diag = .false. !< Read data from diag file?
+ logical, public                 :: interp_hist = .false. !< Read data from hist file?
  logical, public                 :: wrf_mod_vars = .false. !< Whether to modify variable values/dimensions 
                                                            !< to conform to WRF format. Set to true for
                                                            !< UPP-compatible output
@@ -44,7 +44,7 @@
 
 
  namelist /config/ grid_file_input_grid, diag_file_input_grid, hist_file_input_grid, &
- 			file_target_grid, output_file, interp_diag, interp_hist, &
+            file_target_grid, output_file, interp_diag, interp_hist, &
                         wrf_mod_vars
 
 
