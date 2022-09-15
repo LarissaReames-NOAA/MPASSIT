@@ -28,6 +28,10 @@
                                            !< grid size (m) of target grid
  character(50), public                  :: start_time
                                            !< simulation start time input data
+ character(20), public,allocatable      :: valid_time(:,:)
+                                           !< valid forecast time input data
+ integer, public                        :: strlen
+                                           !< StrLen on input file
  integer, public                        :: lsm_scheme
                                            !< land surface scheme input data
  integer, public                        :: mp_scheme

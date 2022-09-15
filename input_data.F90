@@ -24,7 +24,8 @@
  use model_grid, only             : input_grid,        &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
-                                    nsoil_input, &
+                                    nsoil_input, strlen, &
+                                    valid_time, &
                                     start_time, lsm_scheme, &
                                     mp_scheme, conv_scheme, &
                                     cell_latitude_input_grid, &
@@ -235,12 +236,13 @@
  integer                         :: error, ncid, rc
  integer                         :: id_dim
  integer                         :: id_var, i, j, nodes
- 
+
  type(esmf_field),allocatable    :: fields(:)
  
  real(esmf_kind_r8), allocatable :: dummy2(:,:), dummy3(:,:,:)
 
  real(esmf_kind_r8), pointer     :: varptr(:), varptr2(:,:)
+
  
  call init_input_hist_fields()
 
@@ -279,7 +281,7 @@
  
  
  print*,'- READ GLOBAL ATTRIBUTE CONVECTION SCHEME'
- error = nf90_get_att(ncid,NF90_GLOBAL,'config_convection_scheme',conv_scheme)
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_convection_scheme',att_text)
  call netcdf_err(error, 'reading config_conv_scheme')
  
   if (trim(att_text) == 'cu_ntiedke') then
@@ -290,7 +292,14 @@
  	conv_scheme = 3
  endif
 
-
+ vname = 'xtime'
+ print*, '- READ TIMES VARIABLE'
+ error = nf90_inq_dimid(ncid,'StrLen',id_var)
+ call netcdf_err(error, 'reading strlen dim id')
+ error = nf90_inquire_dimension(ncid,id_var,len=strlen)
+ allocate(valid_time(1,strlen))
+ error = nf90_inq_varid(ncid,vname,id_var)
+ call netcdf_err(error, 'reading Times id')
 !---------------------------------------------------------------------------
 ! Initialize 2d esmf atmospheric fields for bilinear/patch interpolation
 !---------------------------------------------------------------------------

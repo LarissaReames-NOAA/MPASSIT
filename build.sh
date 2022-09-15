@@ -14,9 +14,9 @@ if [[ "$target" == "linux.*" || "$target" == "macosx.*" ]]; then
  set -x
 else
  set +x
- source ./sorc/machine-setup.sh
+ source ./machine-setup.sh
  module use ./modulefiles
- module load build.$target.$compiler > /dev/null
+ module load build.$target.$compiler.lua > /dev/null
  module list
  set -x
 fi
