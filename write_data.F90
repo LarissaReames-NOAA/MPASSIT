@@ -78,7 +78,7 @@
  integer                          :: dim_time, dim_lon, dim_lat, dim_z, dim_zp1, dim_soil
  integer                          :: dim_lonp, dim_latp, dim_str, dim_lon_stag, dim_lat_stag
  integer                          :: id_lat, id_lon, id_z, id_zs, id_times, id_xtime, id_itime
- integer                          :: id_latu, id_latv, id_lonu, id_lonv
+ integer                          :: id_latu, id_latv, id_lonu, id_lonv, id_ph, id_mu
  integer                          :: n2d
  integer                          :: sy,sm,sd,sh,smi,ss,  vy,vm,vd,vh,vmi,vs
  integer, allocatable             :: id_vars2(:), id_vars3_nz(:), id_vars3_nzp1(:), &
@@ -364,10 +364,10 @@ if (localpet == 0) then
 				call netcdf_err(error, 'DEFINING UNITS' )
 				error = nf90_put_att(ncid, id_vars2(k), "description", target_diag_longname(i))
 				call netcdf_err(error, 'DEFINING LONG_NAME' )		
-                                error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
-                                call netcdf_err(error, 'DEFINING STAGGER' )
-                                error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
-                                call netcdf_err(error, 'DEFINING FieldType' )
+				error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
+				call netcdf_err(error, 'DEFINING STAGGER' )
+				error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
+				call netcdf_err(error, 'DEFINING FieldType' )
 			endif
 	   enddo
 	   deallocate(fields)
@@ -400,10 +400,10 @@ if (localpet == 0) then
 				call netcdf_err(error, 'DEFINING UNITS' )
 				error = nf90_put_att(ncid, id_vars2(k), "description", target_hist_longname_2d_cons(i))
 				call netcdf_err(error, 'DEFINING LONG_NAME' )	
-                                error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
-                                call netcdf_err(error, 'DEFINING STAGGE' )
-                                error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
-                                call netcdf_err(error, 'DEFINING FieldType' )
+				error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
+				call netcdf_err(error, 'DEFINING STAGGE' )
+				error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
+				call netcdf_err(error, 'DEFINING FieldType' )
 			endif
 	   enddo
 	   deallocate(fields)
@@ -435,10 +435,10 @@ if (localpet == 0) then
 				call netcdf_err(error, 'DEFINING UNITS' )
 				error = nf90_put_att(ncid, id_vars2(k), "description", target_hist_longname_2d_patch(i))
 				call netcdf_err(error, 'DEFINING LONG_NAME' )	
-                                error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
-                                call netcdf_err(error, 'DEFINING STAGGE' )
-                                error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
-                                call netcdf_err(error, 'DEFINING FieldType' )
+				error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
+				call netcdf_err(error, 'DEFINING STAGGE' )
+				error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
+				call netcdf_err(error, 'DEFINING FieldType' )
 			endif
 	   enddo
 	   deallocate(fields)
@@ -469,10 +469,10 @@ if (localpet == 0) then
 				call netcdf_err(error, 'DEFINING UNITS' )
 				error = nf90_put_att(ncid, id_vars2(k), "description", target_hist_longname_2d_nstd(i))
 				call netcdf_err(error, 'DEFINING LONG_NAME' )	
-                                error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
-                                call netcdf_err(error, 'DEFINING STAGGER' )
-                                error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
-                                call netcdf_err(error, 'DEFINING FieldType' )
+				error = nf90_put_att(ncid, id_vars2(k), "stagger", "")
+				call netcdf_err(error, 'DEFINING STAGGER' )
+				error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
+				call netcdf_err(error, 'DEFINING FieldType' )
 			endif	
 	   enddo
 	   deallocate(fields)
@@ -555,22 +555,6 @@ if (localpet == 0) then
 					call netcdf_err(error, 'DEFINING STAGGER' )
 					error = nf90_put_att(ncid, id_vars3_nz(i),"FieldType", 104)
 					call netcdf_err(error, 'DEFINING FieldType' )
-                                elseif (wrf_mod_vars .and. trim(varname)=='MUB') then
-                                        print*,"- DEFINE ON FILE STAGGERED TARGET GRID ", varname
-                                        error = nf90_def_var(ncid, 'MU', NF90_FLOAT, (/dim_lon_stag,dim_lat,dim_z, dim_time/), id_vars3_nz(i))
-                                        call netcdf_err(error, 'DEFINING VAR' )
-                                        error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ")
-                                        call netcdf_err(error, 'DEFINING MEMORYORDER' )
-                                        error = nf90_put_att(ncid, id_vars3_nz(i), "coordinates", "XLONG_U XLAT_U XTIME")
-                                        call netcdf_err(error, 'DEFINING COORD')
-                                        error = nf90_put_att(ncid, id_vars3_nz(i), "units", target_hist_units_3d_nz(i))
-                                        call netcdf_err(error, 'DEFINING UNITS')
-                                        error = nf90_put_att(ncid, id_vars3_nz(i), "description", target_hist_longname_3d_nz(i))
-                                        call netcdf_err(error, 'DEFINING LONG_NAME' )
-                                        error = nf90_put_att(ncid,id_vars3_nz(i), "stagger", "X")
-                                        call netcdf_err(error, 'DEFINING STAGGER' )
-                                        error = nf90_put_att(ncid, id_vars3_nz(i),"FieldType", 104)
-                                        call netcdf_err(error, 'DEFINING FieldType' )
 				else	  			
 					print*,"- DEFINE ON FILE TARGET GRID ", varname
 					error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat,dim_z, dim_time/), id_vars3_nz(i))
@@ -589,7 +573,23 @@ if (localpet == 0) then
 					call netcdf_err(error, 'DEFINING FieldType' )
 				endif
 
-                                
+                if (wrf_mod_vars .and. trim(varname)=='MUB') then
+					print*,"- DEFINE ON FILE STAGGERED TARGET GRID MU"
+					error = nf90_def_var(ncid, 'MU', NF90_FLOAT, (/dim_lon,dim_lat,dim_z, dim_time/), id_mu)
+					call netcdf_err(error, 'DEFINING VAR' )
+					error = nf90_put_att(ncid, id_mu, "MemoryOrder", "XYZ")
+					call netcdf_err(error, 'DEFINING MEMORYORDER' )
+					error = nf90_put_att(ncid, id_mu, "coordinates", "XLONG XLAT XTIME")
+					call netcdf_err(error, 'DEFINING COORD')
+					error = nf90_put_att(ncid, id_mu, "units", target_hist_units_3d_nz(i))
+					call netcdf_err(error, 'DEFINING UNITS')
+					error = nf90_put_att(ncid, id_mu, "description", 'Perturbation '//target_hist_longname_3d_nz(i))
+					call netcdf_err(error, 'DEFINING LONG_NAME' )
+					error = nf90_put_att(ncid, id_mu, "stagger", "")
+					call netcdf_err(error, 'DEFINING STAGGER' )
+					error = nf90_put_att(ncid, id_mu,"FieldType", 104)
+					call netcdf_err(error, 'DEFINING FieldType' )
+				 endif         
 			endif	
 	   	enddo
 	   	deallocate(fields)
@@ -614,15 +614,40 @@ if (localpet == 0) then
 				call netcdf_err(error, 'DEFINING MEMORYORDER' )
 				error = nf90_put_att(ncid, id_vars3_nzp1(i), "coordinates", "XLONG XLAT XTIME")
 				call netcdf_err(error, 'DEFINING COORD' )
-				error = nf90_put_att(ncid, id_vars3_nzp1(i), "units", target_hist_units_3d_nzp1(i))
-				call netcdf_err(error, 'DEFINING UNITS' )
-				error = nf90_put_att(ncid, id_vars3_nzp1(i), "description", target_hist_longname_3d_nzp1(i))
-				call netcdf_err(error, 'DEFINING LONG_NAME' )		
-                                error = nf90_put_att(ncid, id_vars3_nzp1(i),"stagger", "Z")
-                                call netcdf_err(error, 'DEFINING STAGGER' )
-                                error = nf90_put_att(ncid, id_vars3_nzp1(i),"FieldType", 104)
-                                call netcdf_err(error, 'DEFINING FieldType' )
+				if (wrf_mod_vars .and. trim(varname)=='PHB') then
+					error = nf90_put_att(ncid, id_vars3_nzp1(i), "units", "gpm")
+					call netcdf_err(error, 'DEFINING UNITS' )
+					error = nf90_put_att(ncid, id_vars3_nzp1(i), "description", "Base Geopotential Height")
+					call netcdf_err(error, 'DEFINING LONG_NAME' )	
+				else
+					error = nf90_put_att(ncid, id_vars3_nzp1(i), "units", target_hist_units_3d_nzp1(i))
+					call netcdf_err(error, 'DEFINING UNITS' )
+					error = nf90_put_att(ncid, id_vars3_nzp1(i), "description", target_hist_longname_3d_nzp1(i))
+					call netcdf_err(error, 'DEFINING LONG_NAME' )	
+				endif	
+				error = nf90_put_att(ncid, id_vars3_nzp1(i),"stagger", "Z")
+				call netcdf_err(error, 'DEFINING STAGGER' )
+				error = nf90_put_att(ncid, id_vars3_nzp1(i),"FieldType", 104)
+				call netcdf_err(error, 'DEFINING FieldType' )	
 			endif
+			
+			if (wrf_mod_vars .and. trim(varname)=='PHB') then
+					print*,"- DEFINE ON FILE STAGGERED TARGET GRID MU"
+					error = nf90_def_var(ncid, 'PH', NF90_FLOAT, (/dim_lon_stag,dim_lat,dim_z, dim_time/), id_ph)
+					call netcdf_err(error, 'DEFINING VAR' )
+					error = nf90_put_att(ncid, id_mu, "MemoryOrder", "XYZ")
+					call netcdf_err(error, 'DEFINING MEMORYORDER' )
+					error = nf90_put_att(ncid, id_mu, "coordinates", "XLONG XLAT XTIME")
+					call netcdf_err(error, 'DEFINING COORD')
+					error = nf90_put_att(ncid, id_mu, "units", "gpm")
+					call netcdf_err(error, 'DEFINING UNITS')
+					error = nf90_put_att(ncid, id_mu, "description", 'Perturbation Geopotential Height')
+					call netcdf_err(error, 'DEFINING LONG_NAME' )
+					error = nf90_put_att(ncid, id_mu, "stagger", "Z")
+					call netcdf_err(error, 'DEFINING STAGGER' )
+					error = nf90_put_att(ncid, id_mu,"FieldType", 104)
+					call netcdf_err(error, 'DEFINING FieldType' )
+			endif 
 	   	enddo
 	   	deallocate(fields)
  	endif
@@ -686,30 +711,18 @@ if (localpet == 0) then
  print*,"- WRITE TO FILE TARGET GRID ITIMESTEP"
  if (localpet ==0) then
    sy = substr(start_time,1,4)
-   print*, 'sy', sy
    sm = substr(start_time,6,7)
-   print*, 'sm', sm
    sd = substr(start_time,9,10)
-   print*, 'sd', sd
    sh = substr(start_time,12,13)
-   print*, 'sh', sh
    smi = substr(start_time,15,16)
-   print*, 'smi', smi
    ss = substr(start_time,18,19)
-   print*, "ss", ss
 
    vy = substr(valid_time(1,1),1,4)
-   print*, 'vy', vy
    vm = substr(valid_time(1,1),6,7)
-   print*, 'vm', vm
    vd = substr(valid_time(1,1),9,10)
-   print*, 'vd', vd
    vh = substr(valid_time(1,1),12,13)
-   print*, 'vh', vh
    vmi = substr(valid_time(1,1),15,16)
-   print*, 'vmi', vmi
    vs = substr(valid_time(1,1),18,19)
-   print*, 'vs', vs
    xtime_dt = datetime(sy,sm,sd,sh,smi,ss) - datetime(vy,vm,vd,vh,vmi,vs)
 
    error = nf90_put_var( ncid, id_xtime, (/xtime_dt%total_seconds()/60.0/), count=(/1/))
@@ -817,6 +830,13 @@ if (localpet == 0) then
                                         count=(/i_target,j_target+1,nz_input,1/))
 				call netcdf_err(error, 'WRITING RECORD' )
 				deallocate(dum3dtmp)
+			elseif (wrf_mod_vars .and. trim(varname)=='MUB') then
+				allocate(dum3dtmp(i_target,j_target,nz_input))
+				
+				error = nf90_put_var( ncid, id_vars3_nz(i), dum3dtmp, &
+                                        count=(/i_target,j_target+1,nz_input,1/))
+				call netcdf_err(error, 'WRITING RECORD' )
+				deallocate(dum3dtmp)
 			else
 				if (wrf_mod_vars .and. trim(varname)=='T') then
 					dum3dt(:,:,:,1) = dum3d - 300.0
@@ -827,6 +847,13 @@ if (localpet == 0) then
 				error = nf90_put_var( ncid, id_vars3_nz(i), dum3dt, &
                                         count=(/i_target,j_target,nz_input,1/))
 				call netcdf_err(error, 'WRITING RECORD' )
+				
+				if (wrf_mod_vars .and. trim(varname)=='MUB') then
+					dum3dt(:,:,:,1) = 0.0_esmf_kind_r8
+					error = nf90_put_var( ncid, id_mu, dum3dt, &
+                                        count=(/i_target,j_target,nz_input,1/))
+					call netcdf_err(error, 'WRITING RECORD' )
+				endif
 			endif
 		endif
 	 enddo
@@ -854,7 +881,7 @@ if (localpet == 0) then
 		  call error_handler("IN FieldGather", error)
 		  
 		if (localpet==0) then  
-			if(trim(varname)=='Z') then
+			if(trim(varname)=='PHB') then
 				do n = 1,i_target
 				do j = 1,j_target
 				do k = 2,nzp1_input
@@ -865,6 +892,8 @@ if (localpet == 0) then
 			
 				error = nf90_put_var( ncid, id_z, dum3dt, count=(/i_target,j_target,nz_input,1/))
 				call netcdf_err(error, 'WRITING RECORD' )
+				
+				dum3dp1 = dum3dp1 * 9.81
 			endif
          
 			print*, trim(varname), minval(dum3dp1), maxval(dum3dp1)
@@ -872,6 +901,14 @@ if (localpet == 0) then
 			error = nf90_put_var( ncid, id_vars3_nzp1(i), dum3dp1t, &
                                         count=(/i_target,j_target,nz_input+1,1/))
 			call netcdf_err(error, 'WRITING RECORD' )
+			
+			if (wrf_mod_vars .and. trim(varname)=='PHB') then
+					dum3dt(:,:,:,1) = 0.0_esmf_kind_r8
+					error = nf90_put_var( ncid, id_ph, dum3dt, &
+                                        count=(/i_target,j_target,nz_input,1/))
+					call netcdf_err(error, 'WRITING RECORD' )
+			endif
+
 
 		endif
 	 enddo
