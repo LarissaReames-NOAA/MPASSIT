@@ -25,7 +25,7 @@
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
                                     nsoil_input, strlen, &
-                                    valid_time, &
+                                    valid_time, config_dt, &
                                     start_time, lsm_scheme, &
                                     mp_scheme, conv_scheme, &
                                     cell_latitude_input_grid, &
@@ -292,6 +292,10 @@
  	conv_scheme = 3
  endif
 
+ print*,'- READ GLOBAL ATTRIBUTE CONFIG_DT'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_dt',config_dt)
+ call netcdf_err(error, 'reading config_dt')
+
  vname = 'xtime'
  print*, '- READ TIMES VARIABLE'
  error = nf90_inq_dimid(ncid,'StrLen',id_var)
@@ -299,7 +303,10 @@
  error = nf90_inquire_dimension(ncid,id_var,len=strlen)
  allocate(valid_time(1,strlen))
  error = nf90_inq_varid(ncid,vname,id_var)
- call netcdf_err(error, 'reading Times id')
+ call netcdf_err(error, 'reading xtime id')
+ error = nf90_get_var(ncid, id_var, valid_time)
+ call netcdf_err(error, 'getting xtime')
+
 !---------------------------------------------------------------------------
 ! Initialize 2d esmf atmospheric fields for bilinear/patch interpolation
 !---------------------------------------------------------------------------
@@ -399,7 +406,7 @@
 	
 
 	
-		print*, localpet, minval(varptr), maxval(varptr)	
+		print*, vname, minval(varptr), maxval(varptr)	
 		nullify(varptr)
 	 enddo
 	 deallocate(dummy2)
@@ -453,7 +460,7 @@
 	
 
 	
-		print*, localpet, minval(varptr), maxval(varptr)	
+		print*, vname, minval(varptr), maxval(varptr)	
 		nullify(varptr)
 	 enddo
 	 deallocate(dummy2)
@@ -505,7 +512,7 @@
 			varptr2(j,:) = dummy3(:,elemIDs(j),1)
 		enddo
 
-		print*, localpet, minval(varptr2), maxval(varptr2)	
+		print*, vname, minval(varptr2), maxval(varptr2)
 		nullify(varptr2)
 	 enddo
 	 deallocate(dummy3)
@@ -558,7 +565,7 @@
 			varptr2(j,:) = dummy3(:,elemIDs(j),1)
 		enddo
 	
-		print*, localpet, minval(varptr2), maxval(varptr2)	
+		print*, vname, minval(varptr2), maxval(varptr2)
 		nullify(varptr2)
 	 enddo
 	 deallocate(dummy3)
@@ -610,7 +617,7 @@
 			varptr2(j,:) = dummy3(:,elemIDs(j),1)
 		enddo
 		
-		print*, localpet, minval(varptr2), maxval(varptr2)	
+		print*, vname, minval(varptr2), maxval(varptr2)
 		nullify(varptr2)
 	 enddo
 	 deallocate(dummy3)

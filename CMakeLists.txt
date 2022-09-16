@@ -67,6 +67,7 @@ set(lib_src
     input_data.F90
     interp.F90
     write_data.F90
+    datetime_module.F90
 )
 
 set(exe_src mpassit.F90)

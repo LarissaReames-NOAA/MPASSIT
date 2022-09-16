@@ -32,6 +32,8 @@
                                            !< valid forecast time input data
  integer, public                        :: strlen
                                            !< StrLen on input file
+ real, public                           :: config_dt
+                                           !< timestep (seconds) of input data
  integer, public                        :: lsm_scheme
                                            !< land surface scheme input data
  integer, public                        :: mp_scheme

@@ -1,7 +1,7 @@
  module write_data
 
  use program_setup, only   : output_file
-
+ use datetime_module, only: datetime, timedelta, clock
  private
 
  public :: write_to_file
@@ -28,6 +28,7 @@
                                      nz_input, nzp1_input, &
                                      nsoil_input, &
                                      dx, start_time, &
+                                     config_dt, &
                                      strlen, valid_time, &
                                      lsm_scheme, mp_scheme, &
                                      conv_scheme, &
@@ -76,9 +77,10 @@
  integer                          :: header_buffer_val = 16384
  integer                          :: dim_time, dim_lon, dim_lat, dim_z, dim_zp1, dim_soil
  integer                          :: dim_lonp, dim_latp, dim_str, dim_lon_stag, dim_lat_stag
- integer                          :: id_lat, id_lon, id_z, id_zs, id_times
+ integer                          :: id_lat, id_lon, id_z, id_zs, id_times, id_xtime, id_itime
  integer                          :: id_latu, id_latv, id_lonu, id_lonv
  integer                          :: n2d
+ integer                          :: sy,sm,sd,sh,smi,ss,  vy,vm,vd,vh,vmi,vs
  integer, allocatable             :: id_vars2(:), id_vars3_nz(:), id_vars3_nzp1(:), &
  									 id_vars_soil(:)
 
@@ -89,6 +91,7 @@
   									 dumsmall(:,:), dum3dtmp(:,:,:)
  
  type(esmf_field), allocatable    :: fields(:), field_write_2d(:)
+ type (timedelta)                 :: xtime_dt
 
  n2d = n_diag_fields + n_hist_fields_2d_patch + n_hist_fields_2d_nstd + n_hist_fields_2d_cons
  allocate(field_write_2d(n2d),id_vars2(n2d))
@@ -125,15 +128,15 @@ if (localpet == 0) then
    call netcdf_err(error, 'CREATING FILE '//trim(output_file) )
 
 !--- define dimension
-   error = nf90_def_dim(ncid, 'Time', 1 , dim_time)
+   error = nf90_def_dim(ncid, 'Time', NF90_UNLIMITED , dim_time)
    call netcdf_err(error, 'DEFINING Time DIMENSION' )
    error = nf90_def_dim(ncid, 'west_east', i_target, dim_lon)
    call netcdf_err(error, 'DEFINING LON DIMENSION' )
-   error = nf90_def_dim(ncid, 'west_east_stag', i_target, dim_lon)
+   error = nf90_def_dim(ncid, 'west_east_stag', i_target+1, dim_lon_stag)
    call netcdf_err(error, 'DEFINING STAGGERED LON DIMENSION' )
    error = nf90_def_dim(ncid, 'south_north', j_target, dim_lat)
    call netcdf_err(error, 'DEFINING LAT DIMENSION' )
-   error = nf90_def_dim(ncid, 'south_north_stag', j_target, dim_lat)
+   error = nf90_def_dim(ncid, 'south_north_stag', j_target+1, dim_lat_stag)
    call netcdf_err(error, 'DEFINING STAGGERED LAT DIMENSION' )
    error = nf90_def_dim(ncid, 'bottom_top', nz_input, dim_z)
    call netcdf_err(error, 'DEFINING VERTICAL DIMENSION' )
@@ -145,13 +148,13 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING STRLEN DIMENSION' )
    
  !--- define global attributes
-   error = nf90_put_att(ncid, NF90_GLOBAL, 'WEST-EAST_GRID_DIMENSION', i_target)
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'WEST-EAST_GRID_DIMENSION', i_target+1)
    call netcdf_err(error, 'DEFINING WEST-EAST GRID DIMENSION GLOBAL ATTRIBUTE')
    
-   error = nf90_put_att(ncid, NF90_GLOBAL, 'SOUTH-NORTH_GRID_DIMENSION', j_target)
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'SOUTH-NORTH_GRID_DIMENSION', j_target+1)
    call netcdf_err(error, 'DEFINING NORTH-SOUTH GRID DIMENSION GLOBAL ATTRIBUTE')
    
-   error = nf90_put_att(ncid, NF90_GLOBAL, 'BOTTOM-TOP_GRID_DIMENSION', nz_input)
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'BOTTOM-TOP_GRID_DIMENSION', nz_input+1)
    call netcdf_err(error, 'DEFINING BOTTOM-TOP GRID DIMENSION GLOBAL ATTRIBUTE')
    
    error = nf90_put_att(ncid, NF90_GLOBAL, 'SIMULATION_START_DATE', start_time)
@@ -306,6 +309,32 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING STAGGER' )
    error = nf90_put_att(ncid, id_times, "FieldType", 104)
    call netcdf_err(error, 'DEFINING FieldType' )
+
+   error = nf90_def_var(ncid, 'ITIMESTEP', NF90_INT, (/dim_time/),id_itime)
+   call netcdf_err(error, 'DEFINING ITIMESTEP FIELD' )
+   error = nf90_put_att(ncid, id_itime, "description", "")
+   call netcdf_err(error, 'DEFINING ITIMESTEP NAME' )
+   error = nf90_put_att(ncid, id_itime, "units", "")
+   call netcdf_err(error, 'DEFINING ITIMESTEP UNITS' )
+   error = nf90_put_att(ncid, id_itime, "stagger", "")
+   call netcdf_err(error, 'DEFINING STAGGER' )
+   error = nf90_put_att(ncid, id_itime, "FieldType", 106)
+   call netcdf_err(error, 'DEFINING FieldType' )
+    error = nf90_put_att(ncid, id_itime, "MemoryOrder", "O ")
+   call netcdf_err(error, 'DEFINING MemoryOrder' )
+
+   error = nf90_def_var(ncid, 'XTIME', NF90_FLOAT, (/dim_time/),id_xtime)
+   call netcdf_err(error, 'DEFINING XTIME FIELD' )
+   error = nf90_put_att(ncid, id_xtime, "description", "minutes since "//start_time)
+   call netcdf_err(error, 'DEFINING XTIME NAME' )
+   error = nf90_put_att(ncid, id_xtime, "units", "minutes since "//start_time)
+   call netcdf_err(error, 'DEFINING XTIME UNITS' )
+   error = nf90_put_att(ncid, id_xtime, "stagger", "")
+   call netcdf_err(error, 'DEFINING STAGGER' )
+   error = nf90_put_att(ncid, id_xtime, "FieldType", 104)
+   call netcdf_err(error, 'DEFINING FieldType' )
+    error = nf90_put_att(ncid, id_xtime, "MemoryOrder", "O ")
+   call netcdf_err(error, 'DEFINING MemoryOrder' )
  endif
    
    k = 0
@@ -495,7 +524,7 @@ if (localpet == 0) then
 				  call error_handler("IN FieldGet", error)
 	  		if (localpet==0) then
 	  			if (wrf_mod_vars .and. trim(varname)=='U') then
-	  				print*,"- DEFINE ON FILE TARGET GRID ", varname
+	  				print*,"- DEFINE ON FILE STAGGERED TARGET GRID ", varname
 					error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon_stag,dim_lat,dim_z, dim_time/), id_vars3_nz(i))
 					call netcdf_err(error, 'DEFINING VAR' )
 					error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ")
@@ -511,7 +540,7 @@ if (localpet == 0) then
 					error = nf90_put_att(ncid, id_vars3_nz(i),"FieldType", 104)
 					call netcdf_err(error, 'DEFINING FieldType' )
 				elseif (wrf_mod_vars .and. trim(varname)=='V') then
-	  				print*,"- DEFINE ON FILE TARGET GRID ", varname
+	  				print*,"- DEFINE ON FILE STAGGERED TARGET GRID ", varname
 					error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat_stag,dim_z, dim_time/), id_vars3_nz(i))
 					call netcdf_err(error, 'DEFINING VAR' )
 					error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ")
@@ -526,6 +555,22 @@ if (localpet == 0) then
 					call netcdf_err(error, 'DEFINING STAGGER' )
 					error = nf90_put_att(ncid, id_vars3_nz(i),"FieldType", 104)
 					call netcdf_err(error, 'DEFINING FieldType' )
+                                elseif (wrf_mod_vars .and. trim(varname)=='MUB') then
+                                        print*,"- DEFINE ON FILE STAGGERED TARGET GRID ", varname
+                                        error = nf90_def_var(ncid, 'MU', NF90_FLOAT, (/dim_lon_stag,dim_lat,dim_z, dim_time/), id_vars3_nz(i))
+                                        call netcdf_err(error, 'DEFINING VAR' )
+                                        error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ")
+                                        call netcdf_err(error, 'DEFINING MEMORYORDER' )
+                                        error = nf90_put_att(ncid, id_vars3_nz(i), "coordinates", "XLONG_U XLAT_U XTIME")
+                                        call netcdf_err(error, 'DEFINING COORD')
+                                        error = nf90_put_att(ncid, id_vars3_nz(i), "units", target_hist_units_3d_nz(i))
+                                        call netcdf_err(error, 'DEFINING UNITS')
+                                        error = nf90_put_att(ncid, id_vars3_nz(i), "description", target_hist_longname_3d_nz(i))
+                                        call netcdf_err(error, 'DEFINING LONG_NAME' )
+                                        error = nf90_put_att(ncid,id_vars3_nz(i), "stagger", "X")
+                                        call netcdf_err(error, 'DEFINING STAGGER' )
+                                        error = nf90_put_att(ncid, id_vars3_nz(i),"FieldType", 104)
+                                        call netcdf_err(error, 'DEFINING FieldType' )
 				else	  			
 					print*,"- DEFINE ON FILE TARGET GRID ", varname
 					error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat,dim_z, dim_time/), id_vars3_nz(i))
@@ -543,6 +588,8 @@ if (localpet == 0) then
 					error = nf90_put_att(ncid, id_vars3_nz(i),"FieldType", 104)
 					call netcdf_err(error, 'DEFINING FieldType' )
 				endif
+
+                                
 			endif	
 	   	enddo
 	   	deallocate(fields)
@@ -598,7 +645,7 @@ if (localpet == 0) then
 
  if (localpet ==0) then
    dum2dt(:,:,1) = dum2d
-   error = nf90_put_var( ncid, id_lon, dum2dt)
+   error = nf90_put_var( ncid, id_lon, dum2dt, count=(/i_target,j_target,1/))
    call netcdf_err(error, 'WRITING LONGITUDE RECORD' )
  endif
 
@@ -613,7 +660,7 @@ if (localpet == 0) then
 
  if (localpet ==0) then
    dum2dt(:,:,1) = dum2d
-   error = nf90_put_var( ncid, id_lat, dum2dt)
+   error = nf90_put_var( ncid, id_lat, dum2dt,count=(/i_target,j_target,1/))
    call netcdf_err(error, 'WRITING LATITUDE RECORD' )
  endif
  
@@ -621,7 +668,7 @@ if (localpet == 0) then
 
  print*,"- WRITE TO FILE TARGET GRID Z_S"
  if (localpet ==0) then
-   error = nf90_put_var( ncid, id_zs, zs_target_grid)
+   error = nf90_put_var( ncid, id_zs, zs_target_grid,count=(/nsoil_input,1/))
    call netcdf_err(error, 'WRITING ZS RECORD' )
  endif
 
@@ -632,6 +679,49 @@ if (localpet == 0) then
    tempstr(1,:) = valid_time(1,1:Datestrlen)
    error = nf90_put_var( ncid, id_times, tempstr, start = (/1,1/), count=(/Datestrlen,1/))
    call netcdf_err(error, 'WRITING TIMES RECORD' )
+ endif
+
+!  xtime
+
+ print*,"- WRITE TO FILE TARGET GRID ITIMESTEP"
+ if (localpet ==0) then
+   sy = substr(start_time,1,4)
+   print*, 'sy', sy
+   sm = substr(start_time,6,7)
+   print*, 'sm', sm
+   sd = substr(start_time,9,10)
+   print*, 'sd', sd
+   sh = substr(start_time,12,13)
+   print*, 'sh', sh
+   smi = substr(start_time,15,16)
+   print*, 'smi', smi
+   ss = substr(start_time,18,19)
+   print*, "ss", ss
+
+   vy = substr(valid_time(1,1),1,4)
+   print*, 'vy', vy
+   vm = substr(valid_time(1,1),6,7)
+   print*, 'vm', vm
+   vd = substr(valid_time(1,1),9,10)
+   print*, 'vd', vd
+   vh = substr(valid_time(1,1),12,13)
+   print*, 'vh', vh
+   vmi = substr(valid_time(1,1),15,16)
+   print*, 'vmi', vmi
+   vs = substr(valid_time(1,1),18,19)
+   print*, 'vs', vs
+   xtime_dt = datetime(sy,sm,sd,sh,smi,ss) - datetime(vy,vm,vd,vh,vmi,vs)
+
+   error = nf90_put_var( ncid, id_xtime, (/xtime_dt%total_seconds()/60.0/), count=(/1/))
+   call netcdf_err(error, 'WRITING XTIME RECORD' )
+ endif
+
+ !  itimestep
+
+ print*,"- WRITE TO FILE TARGET GRID ITIMESTEP"
+ if (localpet ==0) then
+   error = nf90_put_var( ncid, id_itime, (/int(xtime_dt%total_seconds()/config_dt)/), count=(/1/))
+   call netcdf_err(error, 'WRITING ITIMESTEP RECORD' )
  endif
  
  deallocate(dumsmall)
@@ -652,7 +742,7 @@ if (localpet == 0) then
 	if (localpet==0) then
 		print*, trim(varname), minval(dum2d), maxval(dum2d)
 		dum2dt(:,:,1) = dum2d
-		error = nf90_put_var( ncid, id_vars2(i), dum2dt)
+		error = nf90_put_var( ncid, id_vars2(i), dum2dt,count=(/i_target,j_target,1/))
 		call netcdf_err(error, 'WRITING RECORD' )
 	endif
  enddo
@@ -683,7 +773,7 @@ if (localpet == 0) then
 		if (localpet==0) then
 			print*, trim(varname), minval(dumsoil), maxval(dumsoil)
 			dumsoilt(:,:,:,1) = dumsoil
-			error = nf90_put_var( ncid, id_vars_soil(i), dumsoilt)
+			error = nf90_put_var( ncid, id_vars_soil(i), dumsoilt,count=(/i_target,j_target,nsoil_input,1/))
 			call netcdf_err(error, 'WRITING RECORD' )
 		endif
 	 enddo
@@ -705,22 +795,26 @@ if (localpet == 0) then
 		call ESMF_FieldGet(fields(i), name=varname, rc=error)
 		if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
 		  call error_handler("IN FieldGet", error)
-
+                call ESMF_FieldGather(fields(i), dum3d, rootPet=0, rc=error)
+                if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+                  call error_handler("IN FieldGather", error)
 		if (localpet==0) then
 			if (wrf_mod_vars .and. trim(varname)=='U') then
-				allocate(dum3dtmp(nz_input,j_target,i_target+1))
+				allocate(dum3dtmp(i_target+1,j_target,nz_input))
 				call create_stagger(dum3d,nz_input, j_target, i_target, &
-				                    nz_input, j_target, i_target+1, 3,dum3dtmp)
+				                    nz_input, j_target, i_target+1, 1,dum3dtmp)
+                                 error = nf90_put_var( ncid, id_vars3_nz(i), dum3d,count=(/i_target+1,j_target,nz_input,1/))
 				print*, trim(varname), minval(dum3dtmp), maxval(dum3dtmp)
 				error = nf90_put_var( ncid, id_vars3_nz(i), dum3dtmp)
 				call netcdf_err(error, 'WRITING RECORD' )
 				deallocate(dum3dtmp)
 			elseif (wrf_mod_vars .and. trim(varname)=='V') then
-				allocate(dum3dtmp(nz_input,j_target+1,i_target))
+				allocate(dum3dtmp(i_target,j_target+1,nz_input))
 				call create_stagger(dum3d,nz_input, j_target, i_target,  &
 				                    nz_input, j_target+1, i_target, 2,dum3dtmp)
 				print*, trim(varname), minval(dum3dtmp), maxval(dum3dtmp)
-				error = nf90_put_var( ncid, id_vars3_nz(i), dum3dtmp)
+				error = nf90_put_var( ncid, id_vars3_nz(i), dum3dtmp, &
+                                        count=(/i_target,j_target+1,nz_input,1/))
 				call netcdf_err(error, 'WRITING RECORD' )
 				deallocate(dum3dtmp)
 			else
@@ -730,7 +824,8 @@ if (localpet == 0) then
 					dum3dt(:,:,:,1) = dum3d
 				endif
 				print*, trim(varname), minval(dum3dt), maxval(dum3dt)
-				error = nf90_put_var( ncid, id_vars3_nz(i), dum3dt)
+				error = nf90_put_var( ncid, id_vars3_nz(i), dum3dt, &
+                                        count=(/i_target,j_target,nz_input,1/))
 				call netcdf_err(error, 'WRITING RECORD' )
 			endif
 		endif
@@ -768,13 +863,14 @@ if (localpet == 0) then
 				enddo
 				enddo
 			
-				error = nf90_put_var( ncid, id_z, dum3dt)
+				error = nf90_put_var( ncid, id_z, dum3dt, count=(/i_target,j_target,nz_input,1/))
 				call netcdf_err(error, 'WRITING RECORD' )
 			endif
          
 			print*, trim(varname), minval(dum3dp1), maxval(dum3dp1)
 			dum3dp1t(:,:,:,1) = dum3dp1
-			error = nf90_put_var( ncid, id_vars3_nzp1(i), dum3dp1t)
+			error = nf90_put_var( ncid, id_vars3_nzp1(i), dum3dp1t, &
+                                        count=(/i_target,j_target,nz_input+1,1/))
 			call netcdf_err(error, 'WRITING RECORD' )
 
 		endif
@@ -803,32 +899,43 @@ if (localpet == 0) then
 	
 	implicit none
 	integer, intent(IN)               :: nz_in, ny_in, nx_in, nz_out, ny_out, nx_out, stag_dim
-	real(esmf_kind_r8), intent(IN)    :: array_in(nz_in, ny_in, nx_in)
-	real(esmf_kind_r8), intent(INOUT) :: array_out(nz_out, ny_out, nx_out)
+	real(esmf_kind_r8), intent(IN)    :: array_in(nx_in,ny_in,nz_in)
+	real(esmf_kind_r8), intent(INOUT) :: array_out(nx_out,ny_out,nz_out)
 	
 	integer                           :: i, j, k
-	
+        print*, nx_out, ny_out, nz_out, stag_dim
 	do k = 1, nz_out
-		if (stag_dim == 3) then
+		if (stag_dim == 1) then
 			do j = 1,ny_out
-				array_out(k,j,1) = array_in(k,j,1)
-				array_out(k,j,2) = array_in(k,j,1)
+				array_out(1,j,k) = array_in(1,j,k)
+				array_out(2,j,k) = array_in(1,j,k)
 				do i = 3,nx_out
-					array_out(k,j,i) = 2*array_out(k,j,i-1)-array_in(k,j,i-1)
+					array_out(i,j,k) = 2.0*array_in(i-1,j,k)-array_out(i-1,j,k)
 				enddo
 			enddo
 		elseif(stag_dim == 2) then
 			do i = 1,nx_out
-				array_out(k,1,i) = array_in(k,1,i)
-				array_out(k,2,i) = array_in(k,1,i)
+				array_out(i,1,k) = array_in(i,1,k)
+				array_out(i,2,k) = array_in(i,1,k)
 				do j = 3,ny_out
-					array_out(k,j,i) = 2*array_out(k,j-1,i)-array_in(k,j-1,i)
+					array_out(i,j,k) = 2.0*array_in(i,j-1,k)-array_out(i,j-1,k)
 				enddo
 			enddo
 		endif
 	enddo
-
-	return
+        print*,minval(array_out), maxval(array_out) 
  end subroutine create_stagger
+
+ elemental function substr( s, a, b ) result( val )
+        character(*), intent(in) :: s
+        integer,      intent(in) :: a, b
+        character(len(s)) :: res
+        integer           :: val
+
+        res = s( a : b )
+
+        read(res,*) val
+       
+    endfunction
  
  end module write_data
