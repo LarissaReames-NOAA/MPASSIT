@@ -182,6 +182,15 @@
      call ESMF_FieldBundleRegrid(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
+
+     call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, &
+                                         regridmethod=method, &
+                                         routehandle=rh_patch, &
+                                         srcTermProcessing=isrctermprocessing, &
+                                         rc=rc)
+
+         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldBundleRegridStore", rc)
     
      call ESMF_FieldBundleRegrid(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
@@ -233,6 +242,11 @@
         call error_handler("IN FieldBundleRegrid", rc)
     
     if (n_hist_fields_soil>0) then  
+        call ESMF_FieldBundleRegridStore(input_hist_bundle_soil, target_hist_bundle_soil, &
+                                         regridmethod=method, &
+                                         routehandle=rh_nstd, &
+                                         srcTermProcessing=isrctermprocessing, &
+                                         rc=rc)
         call ESMF_FieldBundleRegrid(input_hist_bundle_soil, target_hist_bundle_soil, rh_nstd, rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
             call error_handler("IN FieldBundleRegrid", rc)
