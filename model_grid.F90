@@ -40,6 +40,26 @@
                                            !< microphysics scheme input data
  integer, public                        :: conv_scheme
                                            !< convection scheme input data 
+ real, public                           :: cen_lat
+                                           !< target grid projection center latitude
+ real, public                           :: cen_lon
+                                           !< target grid projection center longitude
+ real, public                           :: truelat1
+                                           !< target grid projection 1st true latitude
+ real, public                           :: truelat2
+                                           !< target grid projection 2nd true latitude
+ real, public                           :: moad_cen_lat
+                                           !< target grid moad center latitude
+ real, public                           :: stand_lon
+                                           !< target grid projection standard longitude
+ real, public                           :: pole_lat
+                                           !< target grid projection pole latitude
+ real, public                           :: pole_lon
+                                           !< target grid projection pole longitude
+ integer, public                        :: map_proj
+                                           !< target grid map projection integer label
+ character(50), public                  :: map_proj_char
+                                           !< target grid map projection character string
  integer, public                        :: i_target
                                            !< i dimension of each global tile, 
                                            !! or of a nest, target grid.
@@ -297,7 +317,6 @@
  error=nf90_get_var(ncid, id_var, zs_target_grid)
  call netcdf_err(error, 'reading ZS')
 
-
  print*,"- NUMBER OF CELLS ON INPUT GRID ", nCells_input
  print*,"- NUMBER OF NODES ON INPUT GRID ", nVert_input
 
@@ -507,11 +526,44 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  print*,'- READ GLOBAL ATTRIBUTE DX'
  error = nf90_get_att(ncid,NF90_GLOBAL,'DX',dx)
  call netcdf_err(error, 'reading dx')
- error = nf90_close(ncid)
+
  print*,"- I/J DIMENSIONS OF THE TARGET GRID TILES ", i_target, j_target
 
  ip1_target = i_target + 1
  jp1_target = j_target + 1
+
+ print*, '- READING GLOBAL ATTRIBUTES'
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'CEN_LAT', cen_lat)
+ call netcdf_err(error, 'GETTING CEN_LAT GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'CEN_LON', cen_lon)
+ call netcdf_err(error, 'GETTING CEN_LON GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'TRUELAT1', truelat1)
+ call netcdf_err(error, 'GETTING TRUELAT1 GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'TRUELAT2', truelat2)
+ call netcdf_err(error, 'GETTING TRUELAT2 GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'MOAD_CEN_LAT', cen_lat)
+ call netcdf_err(error, 'GETTING MOAD_CEN_LAT GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'STAND_LON', stand_lon)
+ call netcdf_err(error, 'GETTING STAND_LON GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'POLE_LAT', pole_lat)
+ call netcdf_err(error, 'GETTING POLELAT GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'POLE_LON', pole_lon)
+ call netcdf_err(error, 'GETTING POLE_LON GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'MAP_PROJ', map_proj)
+ call netcdf_err(error, 'GETTING MAP_PROJ GLOBAL ATTRIBUTE')
+
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'MAP_PROJ_CHAR', map_proj_char)
+ call netcdf_err(error, 'GETTING MAP_PROJ_CHAR GLOBAL ATTRIBUTE')
+
+ error = nf90_close(ncid)
 
 !-----------------------------------------------------------------------
 ! Create ESMF grid object for the model grid.

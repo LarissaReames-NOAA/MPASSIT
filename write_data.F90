@@ -32,6 +32,10 @@
                                      strlen, valid_time, &
                                      lsm_scheme, mp_scheme, &
                                      conv_scheme, &
+                                     cen_lat, cen_lon, truelat1, &
+                                     truelat2, moad_cen_lat, &
+                                     stand_lon, pole_lat, pole_lon, &
+                                     map_proj, map_proj_char, &
                                      longitude_target_grid, &
                                      latitude_target_grid, &
                                      zs_target_grid, &
@@ -175,15 +179,48 @@ if (localpet == 0) then
    error = nf90_put_att(ncid, NF90_GLOBAL, 'CU_PHYSICS', conv_scheme)
    call netcdf_err(error, 'DEFINING CU PHYSICS GLOBAL ATTRIBUTE')
 
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'CEN_LAT', cen_lat)
+   call netcdf_err(error, 'DEFINING CEN_LAT GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'CEN_LON', cen_lon)
+   call netcdf_err(error, 'DEFINING CEN_LON GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'TRUELAT1', truelat1)
+   call netcdf_err(error, 'DEFINING TRUELAT1 GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'TRUELAT2', truelat2)
+   call netcdf_err(error, 'DEFINING TRUELAT2 GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'MOAD_CEN_LAT', cen_lat)
+   call netcdf_err(error, 'DEFINING MOAD_CEN_LAT GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'STAND_LON', stand_lon)
+   call netcdf_err(error, 'DEFINING STAND_LON GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'POLE_LAT', pole_lat)
+   call netcdf_err(error, 'DEFINING POLELAT GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'POLE_LON', pole_lon)
+   call netcdf_err(error, 'DEFINING POLE_LON GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'POL_ELAT', pole_lat)
+   call netcdf_err(error, 'DEFINING POLE_LAT GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'MAP_PROJ', map_proj)
+   call netcdf_err(error, 'DEFINING MAP_PROJ GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'MAP_PROJ_CHAR', map_proj_char)
+   call netcdf_err(error, 'DEFINING MAP_PROJ_CHAR GLOBAL ATTRIBUTE')
+
 !--- define fields
 
    error = nf90_def_var(ncid, 'XLONG', NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_lon)
    call netcdf_err(error, 'DEFINING GEOLON FIELD' )
-   error = nf90_put_att(ncid, id_lon, "description", "Longitude")
+   error = nf90_put_att(ncid, id_lon, "description", "LONGITUDE, WEST IS NEGATIVE")
    call netcdf_err(error, 'DEFINING GEOLON NAME' )
    error = nf90_put_att(ncid, id_lon, "units", "degree_east")
    call netcdf_err(error, 'DEFINING GEOLON UNITS' )
-   error = nf90_put_att(ncid, id_lon, "MemoryOrder", "XY")
+   error = nf90_put_att(ncid, id_lon, "MemoryOrder", "XY " )
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
     error = nf90_put_att(ncid, id_lon, "coordinates", "XLONG XLAT")
     call netcdf_err(error, 'DEFINING COORD' )
@@ -194,11 +231,11 @@ if (localpet == 0) then
    
    error = nf90_def_var(ncid, 'XLONG_U', NF90_FLOAT, (/dim_lon_stag, dim_lat, dim_time/), id_lonu)
    call netcdf_err(error, 'DEFINING GEOLON FIELD' )
-   error = nf90_put_att(ncid, id_lonu, "description", "Longitude")
+   error = nf90_put_att(ncid, id_lonu, "description", "LONGITUDE, WEST IS NEGATIVE")
    call netcdf_err(error, 'DEFINING GEOLON NAME' )
    error = nf90_put_att(ncid, id_lonu, "units", "degree_east")
    call netcdf_err(error, 'DEFINING GEOLON UNITS' )
-   error = nf90_put_att(ncid, id_lonu, "MemoryOrder", "XY")
+   error = nf90_put_att(ncid, id_lonu, "MemoryOrder", "XY " )
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
     error = nf90_put_att(ncid, id_lonu, "coordinates", "XLONG_U XLAT_U")
     call netcdf_err(error, 'DEFINING COORD' )
@@ -209,11 +246,11 @@ if (localpet == 0) then
    
    error = nf90_def_var(ncid, 'XLONG_V', NF90_FLOAT, (/dim_lon, dim_lat_stag, dim_time/), id_lonv)
    call netcdf_err(error, 'DEFINING GEOLON FIELD' )
-   error = nf90_put_att(ncid, id_lonv, "description", "Longitude")
+   error = nf90_put_att(ncid, id_lonv, "description", "LONGITUDE, WEST IS NEGATIVE")
    call netcdf_err(error, 'DEFINING GEOLON NAME' )
    error = nf90_put_att(ncid, id_lonv, "units", "degree_east")
    call netcdf_err(error, 'DEFINING GEOLON UNITS' )
-   error = nf90_put_att(ncid, id_lonv, "MemoryOrder", "XY")
+   error = nf90_put_att(ncid, id_lonv, "MemoryOrder", "XY " )
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
     error = nf90_put_att(ncid, id_lonv, "coordinates", "XLONG_V XLAT_V")
     call netcdf_err(error, 'DEFINING COORD' )
@@ -224,11 +261,11 @@ if (localpet == 0) then
 
    error = nf90_def_var(ncid, 'XLAT', NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_lat)
    call netcdf_err(error, 'DEFINING GEOLAT FIELD' )
-   error = nf90_put_att(ncid, id_lat, "description", "Latitude")
+   error = nf90_put_att(ncid, id_lat, "description", "LATITUDE, SOUTH IS NEGATIVE")
    call netcdf_err(error, 'DEFINING GEOLAT NAME' )
    error = nf90_put_att(ncid, id_lat, "units", "degree_north")
    call netcdf_err(error, 'DEFINING GEOLAT UNITS' )
-   error = nf90_put_att(ncid, id_lat, "MemoryOrder", "XY")
+   error = nf90_put_att(ncid, id_lat, "MemoryOrder", "XY " )
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
     error = nf90_put_att(ncid, id_lat, "coordinates", "XLONG XLAT")
     call netcdf_err(error, 'DEFINING COORD' )
@@ -239,13 +276,13 @@ if (localpet == 0) then
    
    error = nf90_def_var(ncid, 'XLAT_U', NF90_FLOAT, (/dim_lon_stag,dim_lat, dim_time/), id_latu)
    call netcdf_err(error, 'DEFINING GEOLAT FIELD' )
-   error = nf90_put_att(ncid, id_latu, "description", "Latitude")
+   error = nf90_put_att(ncid, id_latu, "description", "LATITUDE, SOUTH IS NEGATIVE")
    call netcdf_err(error, 'DEFINING GEOLAT NAME' )
    error = nf90_put_att(ncid, id_latu, "units", "degree_north")
    call netcdf_err(error, 'DEFINING GEOLAT UNITS' )
-   error = nf90_put_att(ncid, id_latu, "MemoryOrder", "XY")
+   error = nf90_put_att(ncid, id_latu, "MemoryOrder", "XY " )
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
-    error = nf90_put_att(ncid, id_latu, "coordinates", "XLONG_U XLAT_U")
+    error = nf90_put_att(ncid, id_latu, "coordinates", "XLONG_U XLAT")
     call netcdf_err(error, 'DEFINING COORD' )
    error = nf90_put_att(ncid, id_latu, "stagger", "X")
    call netcdf_err(error, 'DEFINING STAGGER' )
@@ -254,11 +291,11 @@ if (localpet == 0) then
    
    error = nf90_def_var(ncid, 'XLAT_V', NF90_FLOAT, (/dim_lon,dim_lat_stag, dim_time/), id_latv)
    call netcdf_err(error, 'DEFINING GEOLAT FIELD' )
-   error = nf90_put_att(ncid, id_latv, "description", "Latitude")
+   error = nf90_put_att(ncid, id_latv, "description", "LATITUDE, SOUTH IS NEGATIVE")
    call netcdf_err(error, 'DEFINING GEOLAT NAME' )
    error = nf90_put_att(ncid, id_latv, "units", "degree_north")
    call netcdf_err(error, 'DEFINING GEOLAT UNITS' )
-   error = nf90_put_att(ncid, id_latv, "MemoryOrder", "XY")
+   error = nf90_put_att(ncid, id_latv, "MemoryOrder", "XY " )
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
     error = nf90_put_att(ncid, id_latv, "coordinates", "XLONG_V XLAT_V")
     call netcdf_err(error, 'DEFINING COORD' )
@@ -273,9 +310,9 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING Z_C NAME' )
    error = nf90_put_att(ncid, id_z, "units", "m AMSL")
    call netcdf_err(error, 'DEFINING Z_C UNITS' )
-   error = nf90_put_att(ncid, id_z, "MemoryOrder", "XYZ")
+   error = nf90_put_att(ncid, id_z, "MemoryOrder", "XYZ ")
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
-    error = nf90_put_att(ncid, id_z, "coordinates", "XLONG XLAT Z_C")
+    error = nf90_put_att(ncid, id_z, "coordinates", "XC")
     call netcdf_err(error, 'DEFINING COORD' )
    error = nf90_put_att(ncid, id_z, "stagger", "")
    call netcdf_err(error, 'DEFINING STAGGER' )
@@ -290,7 +327,7 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING ZS UNITS' )
    error = nf90_put_att(ncid, id_zs, "MemoryOrder", "X")
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
-    error = nf90_put_att(ncid, id_zs, "coordinates", "ZS")
+    error = nf90_put_att(ncid, id_zs, "coordinates", "ZS XTIME")
     call netcdf_err(error, 'DEFINING COORD' )
    error = nf90_put_att(ncid, id_zs, "stagger", "")
    call netcdf_err(error, 'DEFINING STAGGER' )
@@ -356,7 +393,7 @@ if (localpet == 0) then
             if (localpet==0) then
                 error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_vars2(k))
                 call netcdf_err(error, 'DEFINING VAR' )
-                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY")
+                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY " )
                 call netcdf_err(error, 'DEFINING MEMORYORDER' )
                 error = nf90_put_att(ncid, id_vars2(k), "coordinates", "XLONG XLAT XTIME")
                 call netcdf_err(error, 'DEFINING COORD' )
@@ -392,7 +429,7 @@ if (localpet == 0) then
             if (localpet==0) then
                 error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_vars2(k))
                 call netcdf_err(error, 'DEFINING VAR' )
-                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY")
+                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY " )
                 call netcdf_err(error, 'DEFINING MEMORYORDER' )
                 error = nf90_put_att(ncid, id_vars2(k), "coordinates", "XLONG XLAT XTIME")
                 call netcdf_err(error, 'DEFINING COORD' )
@@ -427,7 +464,7 @@ if (localpet == 0) then
             if (localpet==0) then
                 error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_vars2(k))
                 call netcdf_err(error, 'DEFINING VAR' )
-                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY")
+                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY " )
                 call netcdf_err(error, 'DEFINING MEMORYORDER' )
                 error = nf90_put_att(ncid, id_vars2(k), "coordinates", "XLONG XLAT XTIME")
                 call netcdf_err(error, 'DEFINING COORD' )   
@@ -461,7 +498,7 @@ if (localpet == 0) then
                 print*,"- DEFINE ON FILE TARGET GRID ", varname
                 error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_vars2(k))
                 call netcdf_err(error, 'DEFINING VAR' )
-                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY")
+                error = nf90_put_att(ncid, id_vars2(k), "MemoryOrder", "XY " )
                 call netcdf_err(error, 'DEFINING MEMORYORDER' )
                 error = nf90_put_att(ncid, id_vars2(k), "coordinates", "XLONG XLAT XTIME")
                 call netcdf_err(error, 'DEFINING COORD' )
@@ -493,7 +530,7 @@ if (localpet == 0) then
                 print*,"- DEFINE ON FILE TARGET GRID ", varname
                 error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat, dim_soil, dim_time/), id_vars_soil(i))
                 call netcdf_err(error, 'DEFINING VAR' )
-                error = nf90_put_att(ncid, id_vars_soil(i), "MemoryOrder", "XYZ")
+                error = nf90_put_att(ncid, id_vars_soil(i), "MemoryOrder", "XYZ ")
                 call netcdf_err(error, 'DEFINING MEMORYORDER' )
                 error = nf90_put_att(ncid, id_vars_soil(i), "coordinates", "XLONG XLAT XTIME")
                 call netcdf_err(error, 'DEFINING COORD' )
@@ -527,7 +564,7 @@ if (localpet == 0) then
                     print*,"- DEFINE ON FILE STAGGERED TARGET GRID ", varname
                     error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon_stag,dim_lat,dim_z, dim_time/), id_vars3_nz(i))
                     call netcdf_err(error, 'DEFINING VAR' )
-                    error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ")
+                    error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ ")
                     call netcdf_err(error, 'DEFINING MEMORYORDER' )
                     error = nf90_put_att(ncid, id_vars3_nz(i), "coordinates", "XLONG_U XLAT_U XTIME")
                     call netcdf_err(error, 'DEFINING COORD' )
@@ -543,7 +580,7 @@ if (localpet == 0) then
                     print*,"- DEFINE ON FILE STAGGERED TARGET GRID ", varname
                     error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat_stag,dim_z, dim_time/), id_vars3_nz(i))
                     call netcdf_err(error, 'DEFINING VAR' )
-                    error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ")
+                    error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ ")
                     call netcdf_err(error, 'DEFINING MEMORYORDER' )
                     error = nf90_put_att(ncid, id_vars3_nz(i), "coordinates", "XLONG_V XLAT_V XTIME")
                     call netcdf_err(error, 'DEFINING COORD' )
@@ -559,7 +596,7 @@ if (localpet == 0) then
                     print*,"- DEFINE ON FILE TARGET GRID ", varname
                     error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat,dim_z, dim_time/), id_vars3_nz(i))
                     call netcdf_err(error, 'DEFINING VAR' )
-                    error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ")
+                    error = nf90_put_att(ncid, id_vars3_nz(i), "MemoryOrder", "XYZ ")
                     call netcdf_err(error, 'DEFINING MEMORYORDER' )
                     error = nf90_put_att(ncid, id_vars3_nz(i), "coordinates", "XLONG XLAT XTIME")
                     call netcdf_err(error, 'DEFINING COORD' )
@@ -577,7 +614,7 @@ if (localpet == 0) then
                     print*,"- DEFINE ON FILE STAGGERED TARGET GRID MU"
                     error = nf90_def_var(ncid, 'MU', NF90_FLOAT, (/dim_lon,dim_lat,dim_z, dim_time/), id_mu)
                     call netcdf_err(error, 'DEFINING VAR' )
-                    error = nf90_put_att(ncid, id_mu, "MemoryOrder", "XYZ")
+                    error = nf90_put_att(ncid, id_mu, "MemoryOrder", "XYZ ")
                     call netcdf_err(error, 'DEFINING MEMORYORDER' )
                     error = nf90_put_att(ncid, id_mu, "coordinates", "XLONG XLAT XTIME")
                     call netcdf_err(error, 'DEFINING COORD')
@@ -610,7 +647,7 @@ if (localpet == 0) then
                 print*,"- DEFINE ON FILE TARGET GRID ", varname
                 error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon,dim_lat,dim_zp1, dim_time/), id_vars3_nzp1(i))
                 call netcdf_err(error, 'DEFINING VAR' )
-                error = nf90_put_att(ncid, id_vars3_nzp1(i), "MemoryOrder", "XYZ")
+                error = nf90_put_att(ncid, id_vars3_nzp1(i), "MemoryOrder", "XYZ ")
                 call netcdf_err(error, 'DEFINING MEMORYORDER' )
                 error = nf90_put_att(ncid, id_vars3_nzp1(i), "coordinates", "XLONG XLAT XTIME")
                 call netcdf_err(error, 'DEFINING COORD' )
@@ -635,7 +672,7 @@ if (localpet == 0) then
                     print*,"- DEFINE ON FILE STAGGERED TARGET GRID MU"
                     error = nf90_def_var(ncid, 'PH', NF90_FLOAT, (/dim_lon,dim_lat,dim_zp1, dim_time/), id_ph)
                     call netcdf_err(error, 'DEFINING VAR' )
-                    error = nf90_put_att(ncid, id_mu, "MemoryOrder", "XYZ")
+                    error = nf90_put_att(ncid, id_mu, "MemoryOrder", "XYZ ")
                     call netcdf_err(error, 'DEFINING MEMORYORDER' )
                     error = nf90_put_att(ncid, id_mu, "coordinates", "XLONG XLAT XTIME")
                     call netcdf_err(error, 'DEFINING COORD')
