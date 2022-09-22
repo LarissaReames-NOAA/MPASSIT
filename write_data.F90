@@ -39,6 +39,7 @@
                                      longitude_target_grid, &
                                      latitude_target_grid, &
                                      zs_target_grid, &
+                                     hgt_target_grid, &
                                      target_diag_bundle, &
                                      n_diag_fields, &
                                      target_hist_bundle_2d_patch, &
@@ -82,7 +83,7 @@
  integer                          :: dim_time, dim_lon, dim_lat, dim_z, dim_zp1, dim_soil
  integer                          :: dim_lonp, dim_latp, dim_str, dim_lon_stag, dim_lat_stag
  integer                          :: id_lat, id_lon, id_z, id_zs, id_times, id_xtime, id_itime
- integer                          :: id_latu, id_latv, id_lonu, id_lonv, id_ph, id_mu
+ integer                          :: id_latu, id_latv, id_lonu, id_lonv, id_ph, id_mu, id_hgt
  integer                          :: n2d
  integer                          :: sy,sm,sd,sh,smi,ss,  vy,vm,vd,vh,vmi,vs
  integer, allocatable             :: id_vars2(:), id_vars3_nz(:), id_vars3_nzp1(:), &
@@ -312,7 +313,7 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING Z_C UNITS' )
    error = nf90_put_att(ncid, id_z, "MemoryOrder", "XYZ ")
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
-    error = nf90_put_att(ncid, id_z, "coordinates", "XC")
+    error = nf90_put_att(ncid, id_z, "coordinates", "XLAT XLONG Z_C")
     call netcdf_err(error, 'DEFINING COORD' )
    error = nf90_put_att(ncid, id_z, "stagger", "")
    call netcdf_err(error, 'DEFINING STAGGER' )
@@ -372,6 +373,21 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING FieldType' )
     error = nf90_put_att(ncid, id_xtime, "MemoryOrder", "O ")
    call netcdf_err(error, 'DEFINING MemoryOrder' )
+
+   error = nf90_def_var(ncid, 'HGT', NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_hgt)
+   call netcdf_err(error, 'DEFINING HGT FIELD' )
+   error = nf90_put_att(ncid, id_z, "description", "Terrain height")
+   call netcdf_err(error, 'DEFINING HGT NAME' )
+   error = nf90_put_att(ncid, id_z, "units", "m")
+   call netcdf_err(error, 'DEFINING HGT UNITS' )
+   error = nf90_put_att(ncid, id_z, "MemoryOrder", "XY ")
+    call netcdf_err(error, 'DEFINING MEMORYORDER' )
+    error = nf90_put_att(ncid, id_z, "coordinates", "XLAT XLONG XTIME")
+    call netcdf_err(error, 'DEFINING COORD' )
+   error = nf90_put_att(ncid, id_z, "stagger", "")
+   call netcdf_err(error, 'DEFINING STAGGER' )
+   error = nf90_put_att(ncid, id_z, "FieldType", 104)
+   call netcdf_err(error, 'DEFINING FieldType' )
  endif
    
    k = 0

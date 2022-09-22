@@ -104,6 +104,8 @@
                                            !< longitude of grid center, target grid
  real(esmf_kind_r8), allocatable , public :: zs_target_grid(:,:)
                                           !< soil center depth, target grid
+ type(esmf_field), public               :: hgt_target_grid
+                                          !< surface elevation, target grid
                                            
  integer, public                       :: n_diag_fields
                                           !< number of fields read from the diag file
@@ -477,7 +479,8 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  integer                      :: error, extra, i, j, clb(2), cub(2) 
 
 
- real(esmf_kind_r8), allocatable       :: latitude(:,:), longitude(:,:)
+ real(esmf_kind_r8), allocatable       :: latitude(:,:), longitude(:,:), &
+                                          dum2d(:,:)
  integer                               :: ncid,id_var, id_dim 
  real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:)
 
@@ -506,6 +509,7 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  
  allocate(latitude(i_target,j_target))
  allocate(longitude(i_target,j_target))
+ allocate(dum2d(i_target,j_target))
  
  print*,'- READ LONGITUDE ID'
  error=nf90_inq_varid(ncid, 'XLONG', id_var)
@@ -522,6 +526,14 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  print*,'- READ LATITUDE'
  error=nf90_get_var(ncid, id_var, latitude)
  call netcdf_err(error, 'reading latitude')
+
+  print*,'- READ HGT ID'
+ error=nf90_inq_varid(ncid, 'HGT', id_var)
+ call netcdf_err(error, 'reading hgt id')
+
+ print*,'- READ HGT'
+ error=nf90_get_var(ncid, id_var, dum2d)
+ call netcdf_err(error, 'reading hgt')
     
  print*,'- READ GLOBAL ATTRIBUTE DX'
  error = nf90_get_att(ncid,NF90_GLOBAL,'DX',dx)
@@ -598,6 +610,15 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
                                    rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
     call error_handler("IN FieldCreate", error)
+
+ print*,"- CALL FieldCreate FOR TARGET GRID HGT."
+ hgt_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
     
  print*,"- CALL FieldScatter FOR TARGET GRID LATITUDE. "
  call ESMF_FieldScatter(latitude_target_grid, real(latitude,esmf_kind_r8), rootpet=0, rc=error)
@@ -607,6 +628,11 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  print*,"- CALL FieldScatter FOR TARGET GRID LONGITUDE."
  call ESMF_FieldScatter(longitude_target_grid, real(longitude,esmf_kind_r8), rootpet=0, rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+   call error_handler("IN FieldScatter", error)
+
+  print*,"- CALL FieldScatter FOR TARGET GRID HGT."
+ call ESMF_FieldScatter(hgt_target_grid, real(dum2d,esmf_kind_r8), rootpet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
    call error_handler("IN FieldScatter", error)
    
  print*,"- CALL GridAddCoord FOR INPUT GRID."
@@ -677,6 +703,7 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  nullify(lat_src_ptr)
  deallocate(longitude)
  deallocate(latitude)
+ deallocate(dum2d)
 
  end subroutine define_target_grid
 

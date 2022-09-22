@@ -33,11 +33,13 @@
 !! @param filename the name of the configuration file (defaults to
 !! ./fort.41).
 !! @author Larissa Reames CIWRO/NOAA/NSSL/FRDD
- subroutine read_setup_namelist(filename)
+ subroutine read_setup_namelist(unum, filename)
  implicit none
 
  character(len=*), intent(in), optional :: filename
+ integer, intent(in), optional          :: unum
  character(:), allocatable :: filename_to_use
+ integer                   :: unit_to_use
  
 
  integer                     :: is, ie, ierr
@@ -56,11 +58,17 @@
     filename_to_use = "./fort.41"
  endif
 
- open(41, file=filename_to_use, iostat=ierr)
+ if (present(unum)) then
+     unit_to_use = unum
+ else
+     unit_to_use = 41
+ endif
+
+ open(unit_to_use, file=filename_to_use, iostat=ierr)
  if (ierr /= 0) call error_handler("OPENING SETUP NAMELIST.", ierr)
- read(41, nml=config, iostat=ierr)
+ read(unit_to_use, nml=config, iostat=ierr)
  if (ierr /= 0) call error_handler("READING SETUP NAMELIST.", ierr)
- close (41)
+ close (unit_to_use)
  
  
  return

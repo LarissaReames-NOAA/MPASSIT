@@ -40,9 +40,9 @@ d) 3-dimensional soil variables from the history file (histlist_soil)
 
 The user can edit these to their specifications, if they so wish.
 
-2) Create a namelist file (fort.41) in run directory
+2) Create a namelist file of any name in run directory (e.g., namelist.input)
 
-Input/namelist (In file fort.41):
+Input/namelist:
 
 &config
   grid_file_input_grid="/scratch/wof/mpas/init.nc"
@@ -71,4 +71,4 @@ interp_hist : Whether to interpolate fields from the hist file (T/F)
 
 3) Submit to job queue (most grids won't need more then 3 nodes/72 processes)
 
- srun bin/mpassit
+ srun bin/mpassit namelist.input  [or whatever your chosen namelist is named]

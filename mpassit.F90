@@ -40,9 +40,25 @@
 
  implicit none
 
- integer                      :: ierr, localpet, npets
+ integer                      :: ierr, localpet, npets, unum, lenstr, istatus
+ character(100)               :: tmpstr
+ logical                      :: fexist
 
  type(esmf_vm)                :: vm
+
+!-------------------------------------------------------------------------
+! Get namelist name from standard input
+!-------------------------------------------------------------------------
+ unum = COMMAND_ARGUMENT_COUNT()
+ IF (unum > 0) THEN
+   CALL GET_COMMAND_ARGUMENT(1, tmpstr, lenstr, istatus )
+   INQUIRE(FILE=TRIM(tmpstr),EXIST=fexist)
+   IF (.NOT. fexist) THEN
+       call error_handler('namelist file - '//TRIM(tmpstr)//' does not exist.', -1)
+   END IF
+ ELSE
+   call error_handler('You must provide a namelist entry at execution.', -1)
+ END IF
 
 !-------------------------------------------------------------------------
 ! Initialize mpi and esmf environment.
@@ -72,7 +88,7 @@
 ! Read program configuration namelist.
 !-------------------------------------------------------------------------
 
- call read_setup_namelist
+ call read_setup_namelist(filename=tmpstr)
 
 !-------------------------------------------------------------------------
 ! Create esmf grid objects for input and target grids.
