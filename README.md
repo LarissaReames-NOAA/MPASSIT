@@ -70,7 +70,9 @@ interp_diag : Whether to interpolate fields from the diag file (T/F)
 
 interp_hist : Whether to interpolate fields from the hist file (T/F)
 
-esmf_log    : Whether to output ESMF files (PET) if an ESMF error is encounters (T/F)
+wrf_mod_vars : Whether to modify output variables to conform to WRF shapes (i.e. staggered winds) (default:.false.)
+
+esmf_log    : Whether to output ESMF files (PET) if an ESMF error is encounters (default:.false.)
 
 
 3) Submit to job queue (most grids won't need more then 3 nodes/72 processes)

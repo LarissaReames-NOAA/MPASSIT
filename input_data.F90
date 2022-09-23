@@ -275,8 +275,8 @@
  call netcdf_err(error, 'reading config_microp_scheme')
   if (trim(att_text) == 'mp_thompson') then
     mp_scheme = 8
- elseif (trim(att_text) == 'nssl') then
-    mp_scheme = 17
+ elseif (trim(att_text) == 'mp_nssl2m') then
+    mp_scheme = 18
  endif
  
  
@@ -286,9 +286,9 @@
  
   if (trim(att_text) == 'cu_ntiedke') then
     conv_scheme = 16
- elseif (trim(att_text) == 'cu_kainfritsch') then
+ elseif (trim(att_text) == 'cu_kain_fritsch') then
     conv_scheme = 1
- elseif (trim(att_text) == 'cu_grellfreitas') then
+ elseif (trim(att_text) == 'cu_grell_freitas') then
     conv_scheme = 3
  endif
 
