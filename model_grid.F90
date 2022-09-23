@@ -513,7 +513,10 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  
  print*,'- READ LONGITUDE ID'
  error=nf90_inq_varid(ncid, 'XLONG', id_var)
- call netcdf_err(error, 'reading longitude id')
+ if (error .ne. 0) then
+   error=nf90_inq_varid(ncid, 'XLONG_M', id_var)
+   call netcdf_err(error, 'reading longitude id')
+ endif
 
  print*,'- READ LONGITUDE'
  error=nf90_get_var(ncid, id_var, longitude)
@@ -521,7 +524,10 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  
  print*,'- READ LATITUDE ID'
  error=nf90_inq_varid(ncid, 'XLAT', id_var)
- call netcdf_err(error, 'reading latitude id')
+ if (error .ne. 0) then
+   error=nf90_inq_varid(ncid, 'XLAT_M', id_var)
+   call netcdf_err(error, 'reading latitude id')
+ endif
 
  print*,'- READ LATITUDE'
  error=nf90_get_var(ncid, id_var, latitude)
@@ -529,7 +535,10 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
 
   print*,'- READ HGT ID'
  error=nf90_inq_varid(ncid, 'HGT', id_var)
- call netcdf_err(error, 'reading hgt id')
+ if (error .ne. 0) then
+   error=nf90_inq_varid(ncid, 'HGT_M', id_var)
+   call netcdf_err(error, 'reading hgt id')
+ endif
 
  print*,'- READ HGT'
  error=nf90_get_var(ncid, id_var, dum2d)
@@ -573,8 +582,14 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  call netcdf_err(error, 'GETTING MAP_PROJ GLOBAL ATTRIBUTE')
 
  error = nf90_get_att(ncid, NF90_GLOBAL, 'MAP_PROJ_CHAR', map_proj_char)
- call netcdf_err(error, 'GETTING MAP_PROJ_CHAR GLOBAL ATTRIBUTE')
-
+ if (error .ne. 0) then
+   if (map_proj == 1) then 
+     map_proj_char = "Lambert Conformal"
+   else
+     map_proj_char = "Lat/Lon"
+   endif
+ endif
+ 
  error = nf90_close(ncid)
 
 !-----------------------------------------------------------------------

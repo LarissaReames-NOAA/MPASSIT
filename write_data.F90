@@ -129,7 +129,7 @@
 if (localpet == 0) then
 
 !--- open the file
-   error = nf90_create(output_file, NF90_CLOBBER, ncid)
+   error = nf90_create(output_file, NF90_NETCDF4, ncid)
    call netcdf_err(error, 'CREATING FILE '//trim(output_file) )
 
 !--- define dimension
@@ -376,17 +376,17 @@ if (localpet == 0) then
 
    error = nf90_def_var(ncid, 'HGT', NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_hgt)
    call netcdf_err(error, 'DEFINING HGT FIELD' )
-   error = nf90_put_att(ncid, id_z, "description", "Terrain height")
+   error = nf90_put_att(ncid, id_hgt, "description", "Terrain height")
    call netcdf_err(error, 'DEFINING HGT NAME' )
-   error = nf90_put_att(ncid, id_z, "units", "m")
+   error = nf90_put_att(ncid, id_hgt, "units", "m")
    call netcdf_err(error, 'DEFINING HGT UNITS' )
-   error = nf90_put_att(ncid, id_z, "MemoryOrder", "XY ")
+   error = nf90_put_att(ncid, id_hgt, "MemoryOrder", "XY ")
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
-    error = nf90_put_att(ncid, id_z, "coordinates", "XLAT XLONG XTIME")
+    error = nf90_put_att(ncid, id_hgt, "coordinates", "XLAT XLONG XTIME")
     call netcdf_err(error, 'DEFINING COORD' )
-   error = nf90_put_att(ncid, id_z, "stagger", "")
+   error = nf90_put_att(ncid, id_hgt, "stagger", "")
    call netcdf_err(error, 'DEFINING STAGGER' )
-   error = nf90_put_att(ncid, id_z, "FieldType", 104)
+   error = nf90_put_att(ncid, id_hgt, "FieldType", 104)
    call netcdf_err(error, 'DEFINING FieldType' )
  endif
    
@@ -688,17 +688,17 @@ if (localpet == 0) then
                     print*,"- DEFINE ON FILE STAGGERED TARGET GRID MU"
                     error = nf90_def_var(ncid, 'PH', NF90_FLOAT, (/dim_lon,dim_lat,dim_zp1, dim_time/), id_ph)
                     call netcdf_err(error, 'DEFINING VAR' )
-                    error = nf90_put_att(ncid, id_mu, "MemoryOrder", "XYZ ")
+                    error = nf90_put_att(ncid, id_ph, "MemoryOrder", "XYZ ")
                     call netcdf_err(error, 'DEFINING MEMORYORDER' )
-                    error = nf90_put_att(ncid, id_mu, "coordinates", "XLONG XLAT XTIME")
+                    error = nf90_put_att(ncid, id_ph, "coordinates", "XLONG XLAT XTIME")
                     call netcdf_err(error, 'DEFINING COORD')
-                    error = nf90_put_att(ncid, id_mu, "units", "gpm")
+                    error = nf90_put_att(ncid, id_ph, "units", "gpm")
                     call netcdf_err(error, 'DEFINING UNITS')
-                    error = nf90_put_att(ncid, id_mu, "description", 'Perturbation Geopotential Height')
+                    error = nf90_put_att(ncid, id_ph, "description", 'Perturbation Geopotential Height')
                     call netcdf_err(error, 'DEFINING LONG_NAME' )
-                    error = nf90_put_att(ncid, id_mu, "stagger", "Z")
+                    error = nf90_put_att(ncid, id_ph, "stagger", "Z")
                     call netcdf_err(error, 'DEFINING STAGGER' )
-                    error = nf90_put_att(ncid, id_mu,"FieldType", 104)
+                    error = nf90_put_att(ncid, id_ph,"FieldType", 104)
                     call netcdf_err(error, 'DEFINING FieldType' )
                 endif
             endif 

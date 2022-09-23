@@ -52,6 +52,7 @@ Input/namelist:
   output_file="/scratch/larissa.reames/out_hist_diag.nc"
   interp_diag=.true.
   interp_hist=.true.
+  esmf_log=.false.
 /
 
 grid_file_input_grid : Full path of MPAS file containing grid information
@@ -60,13 +61,16 @@ hist_file_input_grid : Full path of input history MPAS data
 
 diag_file_input_grid : Full path of input diag MPAS data
 
-file_target_grid : Full path of WRF file containing target grid information
+file_target_grid : Full path of WRF file containing target grid information, 
+                   supported types: wrfout, wrfinput, geo_em
 
 output_file : Full path of output file
 
 interp_diag : Whether to interpolate fields from the diag file (T/F)
 
 interp_hist : Whether to interpolate fields from the hist file (T/F)
+
+esmf_log    : Whether to output ESMF files (PET) if an ESMF error is encounters (T/F)
 
 
 3) Submit to job queue (most grids won't need more then 3 nodes/72 processes)

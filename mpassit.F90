@@ -26,7 +26,7 @@
 
  !use interp, only              : interp_driver
 
- use program_setup, only       : read_setup_namelist !, interp_diag, interp_hist
+ use program_setup, only       : read_setup_namelist, LogType
 
  use model_grid, only          : define_target_grid,  &
                                  define_input_grid, &
@@ -57,18 +57,32 @@
        call error_handler('namelist file - '//TRIM(tmpstr)//' does not exist.', -1)
    END IF
  ELSE
-   call error_handler('You must provide a namelist entry at execution.', -1)
+   print*, ' no namelist entry provided at execution, defaulting to using fort.41'
+   INQUIRE(FILE='fort.41',EXIST=fexist)
+   IF (.NOT. fexist) THEN
+       call error_handler('namelist file fort.41 does not exist.', -1)
+   END IF
  END IF
 
 !-------------------------------------------------------------------------
-! Initialize mpi and esmf environment.
+! Initialize mpi
 !-------------------------------------------------------------------------
 
  call mpi_init(ierr)
 
+!-------------------------------------------------------------------------
+! Read program configuration namelist.
+!-------------------------------------------------------------------------
+
+ call read_setup_namelist(filename=tmpstr)
+
+!-------------------------------------------------------------------------
+! Initialize mpi
+!-------------------------------------------------------------------------
+
  print*,"- INITIALIZE ESMF"
- call ESMF_Initialize(rc=ierr)
- if(ESMF_logFoundError(rcToCheck=ierr,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+ call ESMF_Initialize(rc=ierr, logkindflag=LogType)
+ if(ESMF_logFoundError(rcToCheck=ierr,msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
     call error_handler("INITIALIZING ESMF", ierr)
 
  print*,"- CALL VMGetGlobal"
