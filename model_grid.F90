@@ -394,8 +394,6 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  nodeCoords = nodeCoords_temp(1:k*2)
  nodeIDs = nodeIDs_temp(1:k)
  elementConn = elementConn_temp(1:nVertThis)
- print*, elementConn(1:elemTypes2(1)), nodeCoords(1:elemTypes2(1)*2)
- 
  
  input_grid = ESMF_MeshCreate(parametricDim=2, & 
                      spatialDim=2, &
@@ -448,7 +446,6 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
     call error_handler("IN FieldGet", error)
 
- print*, localpet, maxval(elemIDs), minval(elemIDs)
  do i = 1, nCellsPerPET
     data_1d(i) = latVert(elemIDs(i))
     data_1d2(i) = lonVert(elemIDs(i))

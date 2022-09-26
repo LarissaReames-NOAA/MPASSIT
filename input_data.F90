@@ -337,7 +337,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        print*,"- READ ", trim(vname)
+        !print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy2)
@@ -347,12 +347,11 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_patch(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        print*,"- SET ON MESH ", trim(vname)
+        !print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr(j) = dummy2(elemIDs(j),1)
         enddo
 
-        print*, localpet, minval(varptr), maxval(varptr)    
         nullify(varptr)
      enddo
      deallocate(dummy2)
@@ -389,7 +388,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        print*,"- READ ", trim(vname)
+        !print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy2)
@@ -399,14 +398,11 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_cons(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        print*,"- SET ON MESH ", trim(vname)
+        !print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr(j) = dummy2(elemIDs(j),1)
         enddo
     
-
-    
-        print*, vname, minval(varptr), maxval(varptr)   
         nullify(varptr)
      enddo
      deallocate(dummy2)
@@ -443,7 +439,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        print*,"- READ ", trim(vname)
+        !print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy2)
@@ -453,14 +449,11 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_nstd(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        print*,"- SET ON MESH ", trim(vname)
+        !print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr(j) = dummy2(elemIDs(j),1)
         enddo
-    
 
-    
-        print*, vname, minval(varptr), maxval(varptr)   
         nullify(varptr)
      enddo
      deallocate(dummy2)
@@ -497,7 +490,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        print*,"- READ ", trim(vname)
+        !print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy3)
@@ -507,12 +500,11 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_soil(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        print*,"- SET ON MESH ", trim(vname)
+        !print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr2(j,:) = dummy3(:,elemIDs(j),1)
         enddo
 
-        print*, vname, minval(varptr2), maxval(varptr2)
         nullify(varptr2)
      enddo
      deallocate(dummy3)
@@ -550,7 +542,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        print*,"- READ ", trim(vname)
+        !print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy3)
@@ -560,12 +552,11 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_3d_nz(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        print*,"- SET ON MESH ", trim(vname)
+        !print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr2(j,:) = dummy3(:,elemIDs(j),1)
         enddo
     
-        print*, vname, minval(varptr2), maxval(varptr2)
         nullify(varptr2)
      enddo
      deallocate(dummy3)

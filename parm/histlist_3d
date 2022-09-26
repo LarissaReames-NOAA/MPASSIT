@@ -1,4 +1,4 @@
-zgrid				Z
+zgrid				PHB
 w				W
 theta				T
 uReconstructZonal		U
@@ -6,3 +6,5 @@ uReconstructMeridional		V
 qv				QVAPOR
 qc				QCLOUD
 qr				QRAIN
+pressure			P_HYD
+rho				MUB
