@@ -83,7 +83,7 @@
  integer                          :: dim_time, dim_lon, dim_lat, dim_z, dim_zp1, dim_soil
  integer                          :: dim_lonp, dim_latp, dim_str, dim_lon_stag, dim_lat_stag
  integer                          :: id_lat, id_lon, id_z, id_zs, id_times, id_xtime, id_itime
- integer                          :: id_latu, id_latv, id_lonu, id_lonv, id_ph, id_mu, id_hgt
+ integer                          :: id_latu, id_latv, id_lonu, id_lonv, id_ph, id_mu, id_hgt, id_ptop
  integer                          :: n2d
  integer                          :: sy,sm,sd,sh,smi,ss,  vy,vm,vd,vh,vmi,vs
  integer, allocatable             :: id_vars2(:), id_vars3_nz(:), id_vars3_nzp1(:), &
@@ -93,7 +93,7 @@
                                      dum3d(:,:,:), dum3dt(:,:,:,:), &
                                      dum3dp1(:,:,:), dum3dp1t(:,:,:,:), &
                                      dumsoil(:,:,:), dumsoilt(:,:,:,:), &
-                                     dumsmall(:,:), dum3dtmp(:,:,:)
+                                     dumsmall(:,:), dum3dtmp(:,:,:), dum1d(:)
  
  type(esmf_field), allocatable    :: fields(:), field_write_2d(:)
  type (timedelta)                 :: xtime_dt
@@ -114,6 +114,7 @@
    allocate(dum3dp1t(i_target,j_target,nzp1_input,1))
    allocate(dumsoil(i_target,j_target,nsoil_input))
    allocate(dumsoilt(i_target,j_target,nsoil_input,1))
+   allocate(dum1d(1))
  else
    allocate(dumsmall(0,0))
    allocate(dum2d(0,0))
@@ -124,6 +125,7 @@
    allocate(dum3dp1t(0,0,0,0))
    allocate(dumsoil(0,0,0))
    allocate(dumsoilt(0,0,0,0))
+   allocate(dum1d(0))
  endif
  
 if (localpet == 0) then
@@ -642,7 +644,23 @@ if (localpet == 0) then
                     call netcdf_err(error, 'DEFINING STAGGER' )
                     error = nf90_put_att(ncid, id_mu,"FieldType", 104)
                     call netcdf_err(error, 'DEFINING FieldType' )
-                 endif         
+                 endif        
+
+                 if (wrf_mod_vars .and. trim(varname)=='P_HYD') then
+                    print*,"- DEFINE ON FILE STAGGERED TARGET GRID P_TOP"
+                    error = nf90_def_var(ncid, 'P_TOP', NF90_FLOAT, (/dim_time/), id_ptop)
+                    call netcdf_err(error, 'DEFINING VAR' )
+                    error = nf90_put_att(ncid, id_ptop, "MemoryOrder", "0 ")
+                    call netcdf_err(error, 'DEFINING MEMORYORDER' )
+                    error = nf90_put_att(ncid, id_ptop, "units", target_hist_units_3d_nz(i))
+                    call netcdf_err(error, 'DEFINING UNITS')
+                    error = nf90_put_att(ncid, id_ptop, "description", 'PRESSURE TOP OF THE MODEL')
+                    call netcdf_err(error, 'DEFINING LONG_NAME' )
+                    error = nf90_put_att(ncid, id_ptop, "stagger", "")
+                    call netcdf_err(error, 'DEFINING STAGGER' )
+                    error = nf90_put_att(ncid, id_ptop,"FieldType", 104)
+                    call netcdf_err(error, 'DEFINING FieldType' )
+                 endif 
             endif   
         enddo
         deallocate(fields)
@@ -904,6 +922,13 @@ if (localpet == 0) then
                                         count=(/i_target,j_target,nz_input,1/))
                     call netcdf_err(error, 'WRITING RECORD' )
                 endif
+
+                if (wrf_mod_vars .and. trim(varname)=='P_HYD') then
+                    dum1d(1) = 0.0_esmf_kind_r8
+                    error = nf90_put_var( ncid, id_ptop, dum1d, &
+                                        count=(/1/))
+                    call netcdf_err(error, 'WRITING RECORD' )
+                endif
             endif
         endif
      enddo
@@ -966,7 +991,7 @@ if (localpet == 0) then
  endif
  
 
- deallocate(dum3d, dum3dp1, dum3dt, dum3dp1t)
+ deallocate(dum3d, dum3dp1, dum3dt, dum3dp1t, dum1d)
  deallocate(id_vars2, id_vars3_nz, id_vars3_nzp1, id_vars_soil)
  deallocate(target_hist_longname_2d_cons, target_hist_longname_2d_nstd)
  deallocate(target_hist_longname_2d_patch, target_hist_longname_3d_nz)

@@ -21,6 +21,7 @@
  use model_grid, only             : input_grid, target_grid, &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
+                                    i_target, j_target, &
                                     nsoil_input, &
                                     cell_latitude_input_grid, &
                                     cell_longitude_input_grid, &
@@ -63,6 +64,8 @@
  public :: interp_data
  
  type(esmf_routehandle)           :: rh_patch
+ real(esmf_kind_r8), parameter    :: spval = 9.9E10
+ integer(esmf_kind_i4), pointer   :: unmappedPtr(:)
  
  contains
  
@@ -86,13 +89,14 @@
     implicit none
     
     integer, intent(in)              :: localpet
-    integer                          :: i, j, k,  rc
-    integer                          :: isrctermprocessing, nnodes
+    integer                          :: i, j, k,  rc, n, ij
+    integer                          :: l(1), u(1)
+    integer                          :: isrctermprocessing, nnodes, nfields
     integer, allocatable             :: nodecoords(:)
+    type(esmf_routehandle)           :: rh_tmp
     type(ESMF_RegridMethod_Flag)     :: method
-    real(esmf_kind_r8), pointer :: temp2(:,:)
-    real(esmf_kind_r8),allocatable :: temp1(:), temp1lat(:), temp1lon(:)
-    
+    type(ESMF_Field), allocatable    :: fields_in(:), fields_out(:)
+    real(esmf_kind_r8), pointer      :: field_ptr(:,:)
     
     call init_target_diag_fields
     
@@ -105,6 +109,7 @@
                                      regridmethod=method, &
                                      routehandle=rh_patch, &
                                      srcTermProcessing=isrctermprocessing, &
+                                     unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                      rc=rc)
                                      
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
@@ -115,6 +120,43 @@
      call ESMF_FieldBundleRegrid(input_diag_bundle, target_diag_bundle, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
+
+     l = lbound(unmappedPtr)
+     u = ubound(unmappedPtr)
+
+     call ESMF_FieldBundleGet(target_diag_bundle, fieldCount=nfields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+        call error_handler("IN FieldBundleGet", rc)
+
+     allocate(fields_in(nfields), fields_out(nfields))
+
+     call ESMF_FieldBundleGet(input_diag_bundle, fieldList = fields_in, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+        call error_handler("IN FieldBundleGet", rc)
+
+     call ESMF_FieldBundleGet(target_diag_bundle, fieldList = fields_out, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+
+     call ESMF_FieldRegridStore(fields_in(1), fields_out(1), &
+                                     regridmethod=method, &
+                                     routehandle=rh_tmp, &
+                                     srcTermProcessing=isrctermprocessing, &
+                                     unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                     unmappedDstList=unmappedPtr, &
+                                     rc=rc)
+
+     do n = 1,nfields
+       call ESMF_FieldGet(fields_out(n), farrayPtr=field_ptr, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+       do ij = l(1), u(1)
+         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
+         field_ptr(i,j) = spval
+       enddo
+       nullify(field_ptr)
+     enddo
+     deallocate(fields_in, fields_out)
         
   end subroutine interp_diag_data
                 
@@ -150,12 +192,13 @@
     implicit none
     
     integer, intent(in)              :: localpet
-    integer                          :: rc, nfields
+    integer                          :: l(1), u(1)
+    integer                          :: rc, nfields, ij, i, j, n
     integer                          :: isrctermprocessing
     type(ESMF_RegridMethod_Flag)     :: method
     type(ESMF_RouteHandle)           :: rh_cons, rh_nstd
-    type(ESMF_field)                 :: fields(6)
-    real(esmf_kind_r8), pointer      :: varptr2(:,:), varptr3(:,:,:)
+    type(ESMF_Field), allocatable    :: fields(:)
+    real(esmf_kind_r8), pointer      :: field_ptr2(:,:), field_ptr3(:,:,:)
     
     
     call init_target_hist_fields
@@ -170,23 +213,47 @@
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
                                          srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE, &
                                          rc=rc)
                                      
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
             call error_handler("IN FieldBundleRegridStore", rc)
     !endif
      
-     
-      
      print*,"- PATCH REGRID INIT FIELDS "                                
      call ESMF_FieldBundleRegrid(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
 
+     l = lbound(unmappedPtr)
+     u = ubound(unmappedPtr)
+
+     call ESMF_FieldBundleGet(target_hist_bundle_2d_patch, fieldCount=nfields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+
+     allocate(fields(nfields))
+
+     call ESMF_FieldBundleGet(target_hist_bundle_2d_patch, fieldList = fields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+     do n = 1,nfields
+       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr2, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+         call error_handler("IN FieldGet", rc)
+       do ij = l(1), u(1)
+         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
+         field_ptr2(i,j) = spval
+       enddo
+       nullify(field_ptr2)
+     enddo
+     deallocate(fields)
+
      call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
                                          srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
 
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
@@ -195,6 +262,30 @@
      call ESMF_FieldBundleRegrid(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
+   
+     l = lbound(unmappedPtr)
+     u = ubound(unmappedPtr)
+
+     call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldCount=nfields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+
+     allocate(fields(nfields))
+
+     call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldList = fields,rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+     do n = 1,nfields
+       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr3, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+         call error_handler("IN FieldGet", rc)
+       do ij = l(1), u(1)
+         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
+         field_ptr3(i,j,:) = spval
+       enddo
+       nullify(field_ptr3)
+     enddo
+     deallocate(fields)
 
     print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
     
@@ -202,6 +293,7 @@
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
                                          srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
                                      
     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
@@ -210,13 +302,38 @@
     call ESMF_FieldBundleRegrid(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
-        
+    
+    l = lbound(unmappedPtr)
+     u = ubound(unmappedPtr)
+
+     call ESMF_FieldBundleGet(target_hist_bundle_3d_nzp1, fieldCount=nfields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+
+     allocate(fields(nfields))
+
+     call ESMF_FieldBundleGet(target_hist_bundle_3d_nzp1, fieldList = fields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+     do n = 1,nfields
+       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr3, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+         call error_handler("IN FieldGet", rc)
+       do ij = l(1), u(1)
+         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
+         field_ptr3(i,j,:) = spval
+       enddo
+       nullify(field_ptr3)
+     enddo
+     deallocate(fields)
+
     print*,"- CREATE HIST BUNDLE CONSERVATIVE REGRID ROUTEHANDLE"
     method = ESMF_REGRIDMETHOD_CONSERVE
     call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, &
                                          regridmethod=method, &
                                          routehandle=rh_cons, &
                                          srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
                                      
     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
@@ -225,6 +342,30 @@
     call ESMF_FieldBundleRegrid(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, rh_cons, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
+
+    l = lbound(unmappedPtr)
+     u = ubound(unmappedPtr)
+
+     call ESMF_FieldBundleGet(target_hist_bundle_2d_cons, fieldCount=nfields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+
+     allocate(fields(nfields))
+
+     call ESMF_FieldBundleGet(target_hist_bundle_2d_cons, fieldList = fields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+     do n = 1,nfields
+       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr2, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+         call error_handler("IN FieldGet", rc)
+       do ij = l(1), u(1)
+         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
+         field_ptr2(i,j) = spval
+       enddo
+       nullify(field_ptr2)
+     enddo
+     deallocate(fields)
     
     print*,"- CREATE HIST BUNDLE NSTD REGRID ROUTEHANDLE"
     method = ESMF_REGRIDMETHOD_NEAREST_STOD
@@ -232,6 +373,7 @@
                                          regridmethod=method, &
                                          routehandle=rh_nstd, &
                                          srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
                                      
     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
@@ -241,15 +383,68 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
     
+    l = lbound(unmappedPtr)
+     u = ubound(unmappedPtr)
+
+     call ESMF_FieldBundleGet(target_hist_bundle_2d_nstd, fieldCount=nfields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+
+     allocate(fields(nfields))
+
+     call ESMF_FieldBundleGet(target_hist_bundle_2d_nstd, fieldList = fields, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleGet", rc)
+     do n = 1,nfields
+       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr2, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+         call error_handler("IN FieldGet", rc)
+       do ij = l(1), u(1)
+         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
+         field_ptr2(i,j) = spval
+       enddo
+       nullify(field_ptr2)
+     enddo
+     deallocate(fields)
+
     if (n_hist_fields_soil>0) then  
         call ESMF_FieldBundleRegridStore(input_hist_bundle_soil, target_hist_bundle_soil, &
                                          regridmethod=method, &
                                          routehandle=rh_nstd, &
                                          srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
         call ESMF_FieldBundleRegrid(input_hist_bundle_soil, target_hist_bundle_soil, rh_nstd, rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
             call error_handler("IN FieldBundleRegrid", rc)
+
+        l = lbound(unmappedPtr)
+        u = ubound(unmappedPtr)
+
+        call ESMF_FieldBundleGet(target_hist_bundle_soil, fieldCount=nfields, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+           call error_handler("IN FieldBundleGet", rc)
+
+        allocate(fields(nfields))
+
+        call ESMF_FieldBundleGet(target_hist_bundle_soil, fieldList = fields,rc=rc)
+
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+           call error_handler("IN FieldBundleGet", rc)
+
+        do n = 1,nfields
+          call ESMF_FieldGet(fields(n), farrayPtr=field_ptr3, rc=rc)
+          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+          do ij = l(1), u(1)
+            call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
+            field_ptr3(i,j,:) = spval
+          enddo
+           nullify(field_ptr3)
+        enddo
+       
+        deallocate(fields)
+
     endif
         
     print*,"- CALL FieldRegridRelease."
@@ -416,6 +611,40 @@
     deallocate(target_hist_names_3d_nzp1)
  
  end subroutine init_target_hist_fields
+
+ !> Convert 1d index to 2d indices.
+!!
+!! @param[in] ij  the 1d index
+!! @param[in] itile  i-dimension of the tile
+!! @param[in] jtile  j-dimension of the tile
+!! @param[out] i  the "i" index
+!! @param[out] j  the "j" index
+!! @author George Gayno NOAA/EMC
+ subroutine ij_to_i_j(ij, itile, jtile, i, j)
+
+ implicit none
+
+ integer(esmf_kind_i4), intent(in)  :: ij
+ integer              , intent(in)  :: itile, jtile
+
+ integer              , intent(out) :: i, j
+
+ integer                            :: tile_num
+ integer                            :: pt_loc_this_tile
+
+ tile_num = ((ij-1) / (itile*jtile)) ! tile number minus 1
+ pt_loc_this_tile = ij - (tile_num * itile * jtile)
+                                     ! "ij" location of point within tile.
+
+ j = (pt_loc_this_tile - 1) / itile + 1
+ i = mod(pt_loc_this_tile, itile)
+
+ if (i==0) i = itile
+
+ return
+
+ end subroutine ij_to_i_j
+
 end module interp
  
  
