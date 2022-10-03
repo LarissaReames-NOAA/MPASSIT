@@ -27,6 +27,7 @@
                                     cell_longitude_input_grid, &
                                     zgrid_input_grid, &
                                     zgrid_target_grid, &
+                                    hgt_input_grid, hgt_target_grid, &
                                     target_diag_bundle, & 
                                     target_diag_names, &
                                     input_diag_bundle, &
@@ -152,7 +153,7 @@
          call error_handler("IN FieldGet", rc)
        do ij = l(1), u(1)
          call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
-         field_ptr(i,j) = spval
+         !field_ptr(i,j) = spval
        enddo
        nullify(field_ptr)
      enddo
@@ -225,29 +226,21 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
 
-     l = lbound(unmappedPtr)
-     u = ubound(unmappedPtr)
+     print*,"- CREATE HGT PATCH REGRID ROUTEHANDLE"
 
-     call ESMF_FieldBundleGet(target_hist_bundle_2d_patch, fieldCount=nfields, rc=rc)
+     call ESMF_FieldRegridStore(hgt_input_grid, hgt_target_grid, &
+                                         regridmethod=method, &
+                                         routehandle=rh_patch, &
+                                         srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                         rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
+            call error_handler("IN FieldBundleRegridStore", rc)
 
-     allocate(fields(nfields))
-
-     call ESMF_FieldBundleGet(target_hist_bundle_2d_patch, fieldList = fields, rc=rc)
+     print*,"- PATCH REGRID HGT FIELD "
+     call ESMF_FieldRegrid(hgt_input_grid, hgt_target_grid, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-     do n = 1,nfields
-       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr2, rc=rc)
-       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-         call error_handler("IN FieldGet", rc)
-       do ij = l(1), u(1)
-         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
-         field_ptr2(i,j) = spval
-       enddo
-       nullify(field_ptr2)
-     enddo
-     deallocate(fields)
+        call error_handler("IN FieldBundleRegrid", rc)
 
      call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, &
                                          regridmethod=method, &
@@ -263,30 +256,6 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
    
-     l = lbound(unmappedPtr)
-     u = ubound(unmappedPtr)
-
-     call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldCount=nfields, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-
-     allocate(fields(nfields))
-
-     call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldList = fields,rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-     do n = 1,nfields
-       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr3, rc=rc)
-       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-         call error_handler("IN FieldGet", rc)
-       do ij = l(1), u(1)
-         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
-         field_ptr3(i,j,:) = spval
-       enddo
-       nullify(field_ptr3)
-     enddo
-     deallocate(fields)
-
     print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
     
     call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, &
@@ -303,30 +272,6 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
     
-    l = lbound(unmappedPtr)
-     u = ubound(unmappedPtr)
-
-     call ESMF_FieldBundleGet(target_hist_bundle_3d_nzp1, fieldCount=nfields, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-
-     allocate(fields(nfields))
-
-     call ESMF_FieldBundleGet(target_hist_bundle_3d_nzp1, fieldList = fields, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-     do n = 1,nfields
-       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr3, rc=rc)
-       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-         call error_handler("IN FieldGet", rc)
-       do ij = l(1), u(1)
-         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
-         field_ptr3(i,j,:) = spval
-       enddo
-       nullify(field_ptr3)
-     enddo
-     deallocate(fields)
-
     print*,"- CREATE HIST BUNDLE CONSERVATIVE REGRID ROUTEHANDLE"
     method = ESMF_REGRIDMETHOD_CONSERVE
     call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, &
@@ -343,30 +288,6 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
 
-    l = lbound(unmappedPtr)
-     u = ubound(unmappedPtr)
-
-     call ESMF_FieldBundleGet(target_hist_bundle_2d_cons, fieldCount=nfields, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-
-     allocate(fields(nfields))
-
-     call ESMF_FieldBundleGet(target_hist_bundle_2d_cons, fieldList = fields, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-     do n = 1,nfields
-       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr2, rc=rc)
-       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-         call error_handler("IN FieldGet", rc)
-       do ij = l(1), u(1)
-         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
-         field_ptr2(i,j) = spval
-       enddo
-       nullify(field_ptr2)
-     enddo
-     deallocate(fields)
-    
     print*,"- CREATE HIST BUNDLE NSTD REGRID ROUTEHANDLE"
     method = ESMF_REGRIDMETHOD_NEAREST_STOD
     call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, &
@@ -383,30 +304,6 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
     
-    l = lbound(unmappedPtr)
-     u = ubound(unmappedPtr)
-
-     call ESMF_FieldBundleGet(target_hist_bundle_2d_nstd, fieldCount=nfields, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-
-     allocate(fields(nfields))
-
-     call ESMF_FieldBundleGet(target_hist_bundle_2d_nstd, fieldList = fields, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldBundleGet", rc)
-     do n = 1,nfields
-       call ESMF_FieldGet(fields(n), farrayPtr=field_ptr2, rc=rc)
-       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-         call error_handler("IN FieldGet", rc)
-       do ij = l(1), u(1)
-         call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
-         field_ptr2(i,j) = spval
-       enddo
-       nullify(field_ptr2)
-     enddo
-     deallocate(fields)
-
     if (n_hist_fields_soil>0) then  
         call ESMF_FieldBundleRegridStore(input_hist_bundle_soil, target_hist_bundle_soil, &
                                          regridmethod=method, &
@@ -417,33 +314,6 @@
         call ESMF_FieldBundleRegrid(input_hist_bundle_soil, target_hist_bundle_soil, rh_nstd, rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
             call error_handler("IN FieldBundleRegrid", rc)
-
-        l = lbound(unmappedPtr)
-        u = ubound(unmappedPtr)
-
-        call ESMF_FieldBundleGet(target_hist_bundle_soil, fieldCount=nfields, rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-           call error_handler("IN FieldBundleGet", rc)
-
-        allocate(fields(nfields))
-
-        call ESMF_FieldBundleGet(target_hist_bundle_soil, fieldList = fields,rc=rc)
-
-        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-           call error_handler("IN FieldBundleGet", rc)
-
-        do n = 1,nfields
-          call ESMF_FieldGet(fields(n), farrayPtr=field_ptr3, rc=rc)
-          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-            call error_handler("IN FieldGet", rc)
-          do ij = l(1), u(1)
-            call ij_to_i_j(unmappedPtr(ij), i_target, j_target, i, j)
-            field_ptr3(i,j,:) = spval
-          enddo
-           nullify(field_ptr3)
-        enddo
-       
-        deallocate(fields)
 
     endif
         
@@ -471,7 +341,15 @@
     character(50), allocatable   :: field_names(:)
     type(esmf_field),allocatable :: fields(:)
     
-    
+   
+    print*, "- INIT TARGET HGT FIELD "
+    hgt_target_grid = ESMF_FieldCreate(target_grid, &
+                              typekind=ESMF_TYPEKIND_R8, &
+                              staggerloc=ESMF_STAGGERLOC_CENTER, &
+                              name='HGT', rc=rc)
+    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldCreate", rc)
+ 
     print*,"- INITIALIZE TARGET 2D CONS HIST FIELDS."
     
     if (n_hist_fields_2d_cons > 0) then

@@ -104,7 +104,7 @@
                                            !< longitude of grid center, target grid
  real(esmf_kind_r8), allocatable , public :: zs_target_grid(:,:)
                                           !< soil center depth, target grid
- type(esmf_field), public               :: hgt_target_grid
+ type(esmf_field), public               :: hgt_input_grid, hgt_target_grid
                                           !< surface elevation, target grid
                                            
  integer, public                       :: n_diag_fields
@@ -206,7 +206,7 @@
                                           latVert(:), lonVert(:), &
                                           nodeCoords(:), &
                                           nodeCoords_temp(:), &
-                                          elemCoords(:)
+                                          elemCoords(:), dummy(:)
  real(esmf_kind_r8), pointer           :: data_1d(:), data_1d2(:)
  real(esmf_kind_r8), parameter         :: PI=4.D0*DATAN(1.D0)
 
@@ -274,7 +274,7 @@
  allocate(vertOnCell(maxEdges,nCells))
  allocate(zs_target_grid(nsoil_input,1))
  
- 
+ allocate(dummy(nCells))
  ! GET CELL CENTER LAT/LON
  print*,'- READ LONCELL ID'
  error=nf90_inq_varid(ncid, 'lonCell', id_var)
@@ -318,6 +318,12 @@
  print*,'- READ ZS'
  error=nf90_get_var(ncid, id_var, zs_target_grid)
  call netcdf_err(error, 'reading ZS')
+
+ print*,'- READ HGT'
+ error=nf90_inq_varid(ncid, 'ter', id_var)
+ call netcdf_err(error, 'reading ter id')
+ error=nf90_get_var(ncid, id_var, dummy)
+ call netcdf_err(error, 'reading ter')
 
  print*,"- NUMBER OF CELLS ON INPUT GRID ", nCells_input
  print*,"- NUMBER OF NODES ON INPUT GRID ", nVert_input
@@ -452,7 +458,25 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  enddo
 
  nullify(data_1d,data_1d2)
- deallocate(lonCell, latCell, lonVert, latVert,vertOnCell)
+
+ print*,"- CALL FieldCreate FOR INPUT GRID HGT."
+ hgt_input_grid = ESMF_FieldCreate(input_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   meshloc=ESMF_MESHLOC_ELEMENT, &
+                                   name="input_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ call ESMF_FieldGet(hgt_input_grid, farrayPtr=data_1d,rc = rc)
+  if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGet", error)
+
+ do i = 1, nCellsPerPET
+    data_1d(i) = dummy(elemIDs(i))
+ enddo
+ nullify(data_1d)
+ deallocate(lonCell, latCell, lonVert, latVert,vertOnCell,dummy)
 
 
  end subroutine define_input_grid

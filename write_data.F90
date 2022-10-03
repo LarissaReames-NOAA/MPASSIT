@@ -337,6 +337,21 @@ if (localpet == 0) then
    error = nf90_put_att(ncid, id_zs, "FieldType", 104)
    call netcdf_err(error, 'DEFINING FieldType' )
 
+   error = nf90_def_var(ncid, 'HGT', NF90_FLOAT, (/dim_lon,dim_lat,dim_time/), id_hgt)
+   call netcdf_err(error, 'DEFINING HGT FIELD' )
+   error = nf90_put_att(ncid, id_hgt, "description", "TERRAIN HEIGHT ")
+   call netcdf_err(error, 'DEFINING HGT NAME' )
+   error = nf90_put_att(ncid, id_hgt, "units", "m AMSL")
+   call netcdf_err(error, 'DEFINING HGT UNITS' )
+   error = nf90_put_att(ncid, id_hgt, "MemoryOrder", "XY ")
+    call netcdf_err(error, 'DEFINING MEMORYORDER' )
+    error = nf90_put_att(ncid, id_hgt, "coordinates", "XLAT XLONG ")
+    call netcdf_err(error, 'DEFINING COORD' )
+   error = nf90_put_att(ncid, id_hgt, "stagger", "")
+   call netcdf_err(error, 'DEFINING STAGGER' )
+   error = nf90_put_att(ncid, id_hgt, "FieldType", 104)
+   call netcdf_err(error, 'DEFINING FieldType' )
+
    error = nf90_def_var(ncid, 'Times', NF90_CHAR, (/dim_str, dim_time/), id_times)
    call netcdf_err(error, 'DEFINING Times FIELD' )
    error = nf90_put_att(ncid, id_times, "description", "Times")
@@ -376,20 +391,6 @@ if (localpet == 0) then
     error = nf90_put_att(ncid, id_xtime, "MemoryOrder", "O ")
    call netcdf_err(error, 'DEFINING MemoryOrder' )
 
-   error = nf90_def_var(ncid, 'HGT', NF90_FLOAT, (/dim_lon,dim_lat, dim_time/), id_hgt)
-   call netcdf_err(error, 'DEFINING HGT FIELD' )
-   error = nf90_put_att(ncid, id_hgt, "description", "Terrain height")
-   call netcdf_err(error, 'DEFINING HGT NAME' )
-   error = nf90_put_att(ncid, id_hgt, "units", "m")
-   call netcdf_err(error, 'DEFINING HGT UNITS' )
-   error = nf90_put_att(ncid, id_hgt, "MemoryOrder", "XY ")
-    call netcdf_err(error, 'DEFINING MEMORYORDER' )
-    error = nf90_put_att(ncid, id_hgt, "coordinates", "XLAT XLONG XTIME")
-    call netcdf_err(error, 'DEFINING COORD' )
-   error = nf90_put_att(ncid, id_hgt, "stagger", "")
-   call netcdf_err(error, 'DEFINING STAGGER' )
-   error = nf90_put_att(ncid, id_hgt, "FieldType", 104)
-   call netcdf_err(error, 'DEFINING FieldType' )
  endif
    
    k = 0
@@ -769,6 +770,20 @@ if (localpet == 0) then
    call netcdf_err(error, 'WRITING ZS RECORD' )
  endif
 
+!  hgt
+
+ print*,"- CALL FieldGather FOR TARGET GRID LATITUDE"
+   call ESMF_FieldGather(hgt_target_grid, dum2d, rootPet=0, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
+
+ print*,"- WRITE TO FILE TARGET GRID HGT"
+ if (localpet ==0) then
+   dum2dt(:,:,1) = dum2d
+   error = nf90_put_var( ncid, id_hgt, dum2dt,count=(/i_target,j_target,1/))
+   call netcdf_err(error, 'WRITING HGT RECORD' )
+ endif
+
 !  times
 
  print*,"- WRITE TO FILE TARGET GRID Times"
@@ -876,11 +891,11 @@ if (localpet == 0) then
        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
               
-     do i = 1, n_hist_fields_3d_nz  
-        call ESMF_FieldGet(fields(i), name=varname, rc=error)
+     do n = 1, n_hist_fields_3d_nz  
+        call ESMF_FieldGet(fields(n), name=varname, rc=error)
         if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGet", error)
-        call ESMF_FieldGather(fields(i), dum3d, rootPet=0, rc=error)
+        call ESMF_FieldGather(fields(n), dum3d, rootPet=0, rc=error)
          if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
              call error_handler("IN FieldGather", error)
         if (localpet==0) then
@@ -888,9 +903,7 @@ if (localpet == 0) then
                 allocate(dum3dtmp(i_target+1,j_target,nz_input))
                 call create_stagger(dum3d,nz_input, j_target, i_target, &
                                     nz_input, j_target, i_target+1, 1,dum3dtmp)
-                error = nf90_put_var( ncid, id_vars3_nz(i), dum3d,count=(/i_target+1,j_target,nz_input,1/))
-                print*, trim(varname), minval(dum3dtmp), maxval(dum3dtmp)
-                error = nf90_put_var( ncid, id_vars3_nz(i), dum3dtmp)
+                error = nf90_put_var( ncid, id_vars3_nz(n), dum3dtmp,count=(/i_target+1,j_target,nz_input,1/))
                 call netcdf_err(error, 'WRITING RECORD' )
                 deallocate(dum3dtmp)
             elseif (wrf_mod_vars .and. trim(varname)=='V') then
@@ -898,33 +911,45 @@ if (localpet == 0) then
                 call create_stagger(dum3d,nz_input, j_target, i_target,  &
                                     nz_input, j_target+1, i_target, 2,dum3dtmp)
                 print*, trim(varname), minval(dum3dtmp), maxval(dum3dtmp)
-                error = nf90_put_var( ncid, id_vars3_nz(i), dum3dtmp, &
+                error = nf90_put_var( ncid, id_vars3_nz(n), dum3dtmp, &
                                         count=(/i_target,j_target+1,nz_input,1/))
                 call netcdf_err(error, 'WRITING RECORD' )
                 deallocate(dum3dtmp)
             else
                 if (wrf_mod_vars .and. trim(varname)=='T') then
-                    dum3dt(:,:,:,1) = dum3d - 300.0
+                    do i = 1,i_target
+                    do j = 1,j_target
+                      if (dum3d(i,j,1) < 10.0_esmf_kind_r8) continue
+                      dum3dt(i,j,:,1) = dum3d(i,j,:) - 300.0
+                    enddo
+                    enddo
                 else    
                     dum3dt(:,:,:,1) = dum3d(:,:,:)
                 endif
-                print*, trim(varname), minval(dum3d), maxval(dum3d)
                 print*, trim(varname), minval(dum3dt), maxval(dum3dt)
-                error = nf90_put_var( ncid, id_vars3_nz(i), dum3dt, &
+                error = nf90_put_var( ncid, id_vars3_nz(n), dum3dt, &
                                         count=(/i_target,j_target,nz_input,1/))
                 call netcdf_err(error, 'WRITING RECORD' )
                 
                 if (wrf_mod_vars .and. trim(varname)=='MUB') then
                     dum3dt(:,:,:,1) = 0.0_esmf_kind_r8
                     print*, 'MU', minval(dum3d), maxval(dum3d)
-                    print*, 'MU', minval(dum3dt), maxval(dum3dt)
                     error = nf90_put_var( ncid, id_mu, dum3dt, &
                                         count=(/i_target,j_target,nz_input,1/))
                     call netcdf_err(error, 'WRITING RECORD' )
                 endif
 
                 if (wrf_mod_vars .and. trim(varname)=='P_HYD') then
-                    dum1d(1) = 0.0_esmf_kind_r8
+                    dum1d(1) = maxval(dum3d)
+                    print*, "initial p_top = ", dum1d(1)
+                    do i = 1,i_target
+                    do j = 1,j_target
+                      if (dum3d(i,j,nz_input) >= 10.0_esmf_kind_r8) then
+                          dum1d(1) = min(dum3d(i,j,nz_input)* 0.80_esmf_kind_r8, dum1d(1))
+                      endif
+                    enddo
+                    enddo
+                    print*, "P_TOP", dum1d(1)
                     error = nf90_put_var( ncid, id_ptop, dum1d, &
                                         count=(/1/))
                     call netcdf_err(error, 'WRITING RECORD' )
