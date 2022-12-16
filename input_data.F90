@@ -114,17 +114,17 @@
  integer, intent(in)             :: localpet
  integer                         :: error, ncid, rc
  integer                         :: id_dim
- integer                         :: id_var, i, j, nodes
+ integer                         :: id_var, i, j, nodes, ndims
  
  type(esmf_field),allocatable    :: fields(:)
  
- real(esmf_kind_r8), allocatable :: dummy(:)
+ real(esmf_kind_r8), allocatable :: dummy(:), dummy2(:,:,:)
 
- real(esmf_kind_r8), pointer     :: varptr(:)
+ real(esmf_kind_r8), pointer     :: varptr(:), varptr2(:,:)
  
- call init_input_diag_fields()
+ call init_input_diag_fields(localpet)
 
- print*,"- READ INPUT DIAG DATA."
+ if (localpet==0) print*,"- READ INPUT DIAG DATA."
 
 
  the_file = trim(diag_file_input_grid)
@@ -149,6 +149,7 @@
      call error_handler("IN MeshGet", rc)
  
  allocate(dummy(nCells_input))
+ allocate(dummy2(nz_input, nCells_input,1))
  
  do i = 1,n_diag_fields
 
@@ -156,29 +157,40 @@
     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
      call error_handler("IN FieldGet", rc)
     
-    call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-     call error_handler("IN FieldGet", rc)
-    
-    print*,"- READ ", trim(vname)
+    if (localpet==0) print*,"- READ ", trim(vname)
     error=nf90_inq_varid(ncid, trim(vname), id_var)
     call netcdf_err(error, 'reading field id' )
-    error=nf90_get_var(ncid, id_var, dummy)
-    call netcdf_err(error, 'reading field' )
+    error=nf90_inquire_variable(ncid, id_var, ndims=ndims)
+    call netcdf_err(error, 'reading variable dims' )
+    if (ndims == 2) then
+      call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
+      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+        call error_handler("IN FieldGet", rc)
+      error=nf90_get_var(ncid, id_var, dummy)
+      call netcdf_err(error, 'reading field' )
+      if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+      do j = 1, nCellsPerPET
+          varptr(j) = dummy(elemIDs(j))
+      enddo
+      !if (localpet==0) print*, localpet, minval(varptr), maxval(varptr)
+      nullify(varptr)
+    elseif (ndims == 3) then
+      call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+        call error_handler("IN FieldGet", rc)
+      error=nf90_get_var(ncid, id_var, dummy2)
+      call netcdf_err(error, 'reading field' )
+      if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+      do j = 1, nCellsPerPET
+        varptr2(j,:) = dummy2(:,elemIDs(j),1)
+      enddo
+      !if (localpet==0) print*, localpet, minval(varptr2), maxval(varptr2)
+      nullify(varptr2)
+    endif
     error=nf90_get_att(ncid,id_var,'units',target_diag_units(i))
     call netcdf_err(error, 'reading field units' )
     error=nf90_get_att(ncid,id_var,'long_name',target_diag_longname(i))
     call netcdf_err(error, 'reading field long_name' )
-        
-    print*,"- SET ON MESH ", trim(vname)
-    do j = 1, nCellsPerPET
-        varptr(j) = dummy(elemIDs(j))
-    enddo
-    
-
-    
-    print*, localpet, minval(varptr), maxval(varptr)    
-    nullify(varptr)
  enddo
 
  error = nf90_close(ncid)
@@ -188,10 +200,11 @@
 
  end subroutine read_input_diag_data
  
- subroutine init_input_diag_fields
+ subroutine init_input_diag_fields(localpet)
  
     implicit none
     
+    integer, intent(in)           :: localpet
     integer                       :: i, rc
     type(esmf_field),allocatable  :: diag_fields(:)
     character(50), allocatable    :: input_diag_names(:)
@@ -202,18 +215,28 @@
     call read_varlist(fname,n_diag_fields,input_diag_names, target_diag_names)
     
     allocate(diag_fields(n_diag_fields))
-    print*,"- INITIALIZE INPUT DIAG FIELDS."
+    if (localpet==0) print*,"- INITIALIZE INPUT DIAG FIELDS."
     do i = 1, n_diag_fields
-    
-        print*, "- INIT FIELD ", input_diag_names(i)    
-        diag_fields(i) = ESMF_FieldCreate(input_grid, & 
+        if (input_diag_names(i) == "refl10cm") then
+          if (localpet==0) print*, "- INIT FIELD ", input_diag_names(i)
+          diag_fields(i) = ESMF_FieldCreate(input_grid, &
+                            typekind=ESMF_TYPEKIND_R8, &
+                            meshloc=ESMF_MESHLOC_ELEMENT, &
+                            ungriddedLBound=(/1/), &
+                            ungriddedUBound=(/nz_input/), &
+                            name=input_diag_names(i), rc=rc)
+          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+          call error_handler("IN FieldCreate", rc)
+        else 
+          if (localpet==0) print*, "- INIT FIELD ", input_diag_names(i)    
+          diag_fields(i) = ESMF_FieldCreate(input_grid, & 
                             typekind=ESMF_TYPEKIND_R8, &
                             meshloc=ESMF_MESHLOC_ELEMENT, &
                             name=input_diag_names(i), rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-        call error_handler("IN FieldCreate", rc)
+          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldCreate", rc)
+        endif
     enddo
-    
     
     input_diag_bundle = ESMF_FieldBundleCreate(fieldList=diag_fields, & 
                                     name="input diag data", rc=rc)
@@ -244,9 +267,9 @@
  real(esmf_kind_r8), pointer     :: varptr(:), varptr2(:,:)
 
  
- call init_input_hist_fields()
+ call init_input_hist_fields(localpet)
 
- print*,"- READ INPUT HIST DATA."
+ if (localpet==0) print*,"- READ INPUT HIST DATA."
 
 
  the_file = trim(hist_file_input_grid)
@@ -257,7 +280,7 @@
 ! Read global attributes for use when creating output file
 !---------------------------------------------------------------------------
  
- print*,'- READ GLOBAL ATTRIBUTE LSM SCHEME'
+ if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE LSM SCHEME'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_lsm_scheme',att_text)
  call netcdf_err(error, 'reading config_lsm_scheme')
  if (trim(att_text) == 'noah') then
@@ -266,11 +289,11 @@
     lsm_scheme = 3
  endif
  
- print*,'- READ GLOBAL ATTRIBUTE START TIME'
+ if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE START TIME'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_start_time',start_time)
  call netcdf_err(error, 'reading config_start_time')
  
- print*,'- READ GLOBAL ATTRIBUTE LMP SCHEME'
+ if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE LMP SCHEME'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_microp_scheme',att_text)
  call netcdf_err(error, 'reading config_microp_scheme')
   if (trim(att_text) == 'mp_thompson') then
@@ -280,7 +303,7 @@
  endif
  
  
- print*,'- READ GLOBAL ATTRIBUTE CONVECTION SCHEME'
+ if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE CONVECTION SCHEME'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_convection_scheme',att_text)
  call netcdf_err(error, 'reading config_conv_scheme')
  
@@ -292,12 +315,12 @@
     conv_scheme = 3
  endif
 
- print*,'- READ GLOBAL ATTRIBUTE CONFIG_DT'
+ if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE CONFIG_DT'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_dt',config_dt)
  call netcdf_err(error, 'reading config_dt')
 
  vname = 'xtime'
- print*, '- READ TIMES VARIABLE'
+ if (localpet==0) print*, '- READ TIMES VARIABLE'
  error = nf90_inq_dimid(ncid,'StrLen',id_var)
  call netcdf_err(error, 'reading strlen dim id')
  error = nf90_inquire_dimension(ncid,id_var,len=strlen)
@@ -337,7 +360,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        !print*,"- READ ", trim(vname)
+        if (localpet==0) print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy2)
@@ -347,7 +370,7 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_patch(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        !print*,"- SET ON MESH ", trim(vname)
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr(j) = dummy2(elemIDs(j),1)
         enddo
@@ -388,7 +411,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        !print*,"- READ ", trim(vname)
+        if (localpet==0) print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy2)
@@ -398,7 +421,7 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_cons(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        !print*,"- SET ON MESH ", trim(vname)
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr(j) = dummy2(elemIDs(j),1)
         enddo
@@ -439,7 +462,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        !print*,"- READ ", trim(vname)
+        if (localpet==0) print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy2)
@@ -449,7 +472,7 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_nstd(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        !print*,"- SET ON MESH ", trim(vname)
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr(j) = dummy2(elemIDs(j),1)
         enddo
@@ -490,7 +513,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        !print*,"- READ ", trim(vname)
+        if (localpet==0) print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy3)
@@ -500,7 +523,7 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_soil(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        !print*,"- SET ON MESH ", trim(vname)
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr2(j,:) = dummy3(:,elemIDs(j),1)
         enddo
@@ -542,7 +565,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        !print*,"- READ ", trim(vname)
+        if (localpet==0) print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy3)
@@ -552,7 +575,7 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_3d_nz(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        !print*,"- SET ON MESH ", trim(vname)
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr2(j,:) = dummy3(:,elemIDs(j),1)
         enddo
@@ -593,7 +616,7 @@
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
     
-        print*,"- READ ", trim(vname)
+        if (localpet==0) print*,"- READ ", trim(vname)
         error=nf90_inq_varid(ncid, trim(vname), id_var)
         call netcdf_err(error, 'reading field id' )
         error=nf90_get_var(ncid, id_var, dummy3)
@@ -603,12 +626,12 @@
         error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_3d_nzp1(i))
         call netcdf_err(error, 'reading field long_name' )
         
-        print*,"- SET ON MESH ", trim(vname)
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
         do j = 1, nCellsPerPET
             varptr2(j,:) = dummy3(:,elemIDs(j),1)
         enddo
         
-        print*, vname, minval(varptr2), maxval(varptr2)
+        !if (localpet==0) print*, vname, minval(varptr2), maxval(varptr2)
         nullify(varptr2)
      enddo
      deallocate(dummy3)
@@ -621,10 +644,11 @@
 
  end subroutine read_input_hist_data
  
- subroutine init_input_hist_fields
+ subroutine init_input_hist_fields(localpet)
  
     implicit none
-    
+ 
+    integer, intent(in)           :: localpet   
     integer                       :: i, j, k, n, rc 
     integer                       :: n_hist_fields_2d, n_hist_fields_3d
     !type(esmf_field), allocatable :: hist_fields_2d_cons(:), &
@@ -728,12 +752,12 @@
     enddo
 
     
-    print*,"- INITIALIZE INPUT HIST FIELDS."
+    if (localpet==0) print*,"- INITIALIZE INPUT HIST FIELDS."
     if (n_hist_fields_2d_cons > 0) then 
         allocate(fields(n_hist_fields_2d_cons))
         do i = 1, n_hist_fields_2d_cons
     
-            print*, "- INIT FIELD ", input_hist_names_2d_cons(i)
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_cons(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -755,7 +779,7 @@
         allocate(fields(n_hist_fields_2d_nstd))
         do i = 1, n_hist_fields_2d_nstd
     
-            print*, "- INIT FIELD ", input_hist_names_2d_nstd(i)
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_nstd(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -801,7 +825,7 @@
         allocate(fields(n_hist_fields_soil))
         do i = 1, n_hist_fields_soil
     
-            print*, "- INIT FIELD ", input_hist_names_soil(i)
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_soil(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -825,7 +849,7 @@
         allocate(fields(n_hist_fields_3d_nz))
         do i = 1, n_hist_fields_3d_nz
     
-            print*, "- INIT FIELD ", input_hist_names_3d_nz(i)
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_nz(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -849,7 +873,7 @@
         allocate(fields(n_hist_fields_3d_nzp1))
         do i = 1, n_hist_fields_3d_nzp1
     
-            print*, "- INIT FIELD ", input_hist_names_3d_nzp1(i)
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_nzp1(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
