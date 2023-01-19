@@ -80,22 +80,22 @@
 ! Initialize mpi
 !-------------------------------------------------------------------------
 
- print*,"- INITIALIZE ESMF"
+!  print*,"- INITIALIZE ESMF"
  call ESMF_Initialize(rc=ierr, logkindflag=LogType)
  if(ESMF_logFoundError(rcToCheck=ierr,msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
     call error_handler("INITIALIZING ESMF", ierr)
 
- print*,"- CALL VMGetGlobal"
+ !print*,"- CALL VMGetGlobal"
  call ESMF_VMGetGlobal(vm, rc=ierr)
  if(ESMF_logFoundError(rcToCheck=ierr,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
     call error_handler("IN VMGetGlobal", ierr)
 
- print*,"- CALL VMGet"
+ !if (localpet==0) print*,"- CALL VMGet"
  call ESMF_VMGet(vm, localPet=localpet, petCount=npets, rc=ierr)
  if(ESMF_logFoundError(rcToCheck=ierr,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
     call error_handler("IN VMGet", ierr)
 
- print*,'- NPETS IS  ',npets
+ if (localpet==0) print*,'- NPETS IS  ',npets
  print*,'- LOCAL PET ',localpet
 
 !-------------------------------------------------------------------------
@@ -134,9 +134,9 @@ call read_input_data(localpet)
 ! Finish up
 !-------------------------------------------------------------------------
 
- call cleanup_input_target_grid_data
+ call cleanup_input_target_grid_data(localpet)
 
- print*,"- CALL ESMF_finalize"
+ if (localpet==0) print*,"- CALL ESMF_finalize"
  call ESMF_finalize(endflag=ESMF_END_KEEPMPI, rc=ierr)
 
  call mpi_finalize(ierr)

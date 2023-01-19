@@ -38,6 +38,8 @@
                                      map_proj, map_proj_char, &
                                      longitude_target_grid, &
                                      latitude_target_grid, &
+                                     latitude_u,longitude_u, &
+                                     latitude_v, longitude_v, &
                                      zs_target_grid, &
                                      hgt_target_grid, &
                                      target_diag_bundle, &
@@ -90,6 +92,7 @@
                                      id_vars_soil(:)
 
  real(esmf_kind_r8), allocatable  :: dum2d(:,:), dum2dt(:,:,:), &
+                                     dum2dtu(:,:,:), dum2dtv(:,:,:), &
                                      dum3d(:,:,:), dum3dt(:,:,:,:), &
                                      dum3dp1(:,:,:), dum3dp1t(:,:,:,:), &
                                      dumsoil(:,:,:), dumsoilt(:,:,:,:), &
@@ -109,6 +112,8 @@
    allocate(dumsmall(nsoil_input,1))
    allocate(dum2d(i_target,j_target))
    allocate(dum2dt(i_target,j_target,1))
+   allocate(dum2dtu(ip1_target,j_target,1))
+   allocate(dum2dtv(i_target,jp1_target,1))
    allocate(dum3d(i_target,j_target,nz_input))
    allocate(dum3dt(i_target,j_target,nz_input,1))
    allocate(dum3dp1(i_target,j_target,nzp1_input))
@@ -286,7 +291,7 @@ if (localpet == 0) then
    call netcdf_err(error, 'DEFINING GEOLAT UNITS' )
    error = nf90_put_att(ncid, id_latu, "MemoryOrder", "XY " )
     call netcdf_err(error, 'DEFINING MEMORYORDER' )
-    error = nf90_put_att(ncid, id_latu, "coordinates", "XLONG_U XLAT")
+    error = nf90_put_att(ncid, id_latu, "coordinates", "XLONG_U XLAT_U")
     call netcdf_err(error, 'DEFINING COORD' )
    error = nf90_put_att(ncid, id_latu, "stagger", "X")
    call netcdf_err(error, 'DEFINING STAGGER' )
@@ -454,7 +459,7 @@ if (localpet == 0) then
             endif
        enddo
        deallocate(fields)
-       n2d = k
+       !n2d = k
        n3d = m
    endif
    
@@ -594,7 +599,7 @@ if (localpet == 0) then
         enddo
         deallocate(fields)
     endif
-   
+    n2d = k
     if (n_hist_fields_3d_nz>0) then
         allocate(fields(n_hist_fields_3d_nz))
         call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldList=fields, & 
@@ -778,7 +783,6 @@ if (localpet == 0) then
 
 !  latitude
 
-
    if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LATITUDE"
    call ESMF_FieldGather(latitude_target_grid, dum2d, rootPet=0, rc=error)
    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
@@ -790,7 +794,39 @@ if (localpet == 0) then
    error = nf90_put_var( ncid, id_lat, dum2dt,count=(/i_target,j_target,1/))
    call netcdf_err(error, 'WRITING LATITUDE RECORD' )
  endif
- 
+
+!  longitude on u grid
+
+ if (localpet ==0) then
+   dum2dtu(:,:,1) = longitude_u
+   error = nf90_put_var( ncid, id_lonu, dum2dtu, count=(/ip1_target,j_target,1/))
+   call netcdf_err(error, 'WRITING XLONG_U RECORD' )
+ endif
+
+!  latitude on u grid
+
+ if (localpet ==0) then
+   dum2dtu(:,:,1) = latitude_u
+   error = nf90_put_var( ncid, id_latu, dum2dtu,count=(/ip1_target,j_target,1/))
+   call netcdf_err(error, 'WRITING XLAT_U RECORD' )
+ endif
+
+!  longitude on v grid
+
+ if (localpet ==0) then
+   dum2dtv(:,:,1) = longitude_v
+   error = nf90_put_var( ncid, id_lonv, dum2dtv, count=(/i_target,jp1_target,1/))
+   call netcdf_err(error, 'WRITING XLONG_U RECORD' )
+ endif
+
+!  latitude on v grid
+
+ if (localpet ==0) then
+   dum2dtv(:,:,1) = latitude_v
+   error = nf90_put_var( ncid, id_latv, dum2dtv,count=(/i_target,jp1_target,1/))
+   call netcdf_err(error, 'WRITING XLAT_U RECORD' )
+ endif
+ deallocate(longitude_u,latitude_u,longitude_v,latitude_v) 
 !  z_s
 
  if (localpet==0) print*,"- WRITE TO FILE TARGET GRID Z_S"
@@ -1025,7 +1061,7 @@ if (localpet == 0) then
         if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGet", error)
       
-        print*,"- CALL FieldGather FOR TARGET GRID ", trim(varname) 
+        if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID ", trim(varname) 
         call ESMF_FieldGather(fields(i), dum3dp1, rootPet=0, rc=error)
         if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGather", error)

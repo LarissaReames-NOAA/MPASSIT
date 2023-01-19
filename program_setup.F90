@@ -53,7 +53,7 @@
             file_target_grid, output_file, interp_diag, interp_hist, &
                         wrf_mod_vars, esmf_log
 
- print*,"- READ SETUP NAMELIST"
+ !print*,"- READ SETUP NAMELIST"
 
  if (present(filename)) then
     filename_to_use = filename

@@ -212,7 +212,7 @@
     
     fname = 'diaglist'
     
-    call read_varlist(fname,n_diag_fields,input_diag_names, target_diag_names)
+    call read_varlist(localpet,fname,n_diag_fields,input_diag_names, target_diag_names)
     
     allocate(diag_fields(n_diag_fields))
     if (localpet==0) print*,"- INITIALIZE INPUT DIAG FIELDS."
@@ -678,11 +678,11 @@
     n_hist_fields_3d_nzp1 = 0
     
     fname = 'histlist_2d'
-    call read_varlist(fname,n_hist_fields_2d,input_hist_names_2d, target_hist_names_2d)
+    call read_varlist(localpet, fname,n_hist_fields_2d,input_hist_names_2d, target_hist_names_2d)
     fname = 'histlist_3d'
-    call read_varlist(fname,n_hist_fields_3d,input_hist_names_3d, target_hist_names_3d)
+    call read_varlist(localpet,fname,n_hist_fields_3d,input_hist_names_3d, target_hist_names_3d)
     fname = 'histlist_soil'
-    call read_varlist(fname,n_hist_fields_soil,input_hist_names_soil, target_hist_names_soil)
+    call read_varlist(localpet,fname,n_hist_fields_soil,input_hist_names_soil, target_hist_names_soil)
     
     do i = 1, n_hist_fields_2d
         if (any(cons_vars == input_hist_names_2d(i))) then
@@ -802,7 +802,7 @@
         allocate(fields(n_hist_fields_2d_patch))
         do i = 1, n_hist_fields_2d_patch
     
-            print*, "- INIT FIELD ", input_hist_names_2d_patch(i)
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_patch(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -904,10 +904,11 @@
  
  end subroutine init_input_hist_fields
 
-subroutine read_varlist(file,nfields,field_names,field_names_target)
+subroutine read_varlist(localpet, file,nfields,field_names,field_names_target)
 
     implicit none
-    
+   
+   integer, INTENT(IN)                      :: localpet 
    character(50), INTENT(IN)                :: file
    integer, INTENT(OUT)                     :: nfields
    character(50), INTENT(OUT), ALLOCATABLE  :: field_names(:), field_names_target(:)
@@ -930,7 +931,7 @@ subroutine read_varlist(file,nfields,field_names,field_names_target)
      nfields = nfields+1
    enddo
    
-   print*, "READING ", nfields, " FIELDS ACCORDING TO ", trim(file)
+   if (localpet==0) print*, "READING ", nfields, " FIELDS ACCORDING TO ", trim(file)
    if ( nfields == 0) call error_handler("VARLIST FILE IS EMPTY.", -1)
 
    allocate(field_names(nfields))
