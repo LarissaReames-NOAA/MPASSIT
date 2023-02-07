@@ -738,7 +738,7 @@ if (localpet == 0) then
             
             
                 if (wrf_mod_vars .and. trim(varname)=='PHB') then
-                    print*,"- DEFINE ON FILE STAGGERED TARGET GRID MU"
+                    print*,"- DEFINE ON FILE STAGGERED TARGET GRID PH"
                     error = nf90_def_var(ncid, 'PH', NF90_FLOAT, (/dim_lon,dim_lat,dim_zp1, dim_time/), id_ph)
                     call netcdf_err(error, 'DEFINING VAR' )
                     error = nf90_put_att(ncid, id_ph, "MemoryOrder", "XYZ ")
@@ -1089,8 +1089,8 @@ if (localpet == 0) then
             call netcdf_err(error, 'WRITING RECORD' )
             
             if (wrf_mod_vars .and. trim(varname)=='PHB') then
-                    dum3dt(:,:,:,1) = 0.0_esmf_kind_r8
-                    error = nf90_put_var( ncid, id_ph, dum3dt, &
+                    dum3dp1t(:,:,:,1) = 0.0_esmf_kind_r8
+                    error = nf90_put_var( ncid, id_ph, dum3dp1t, &
                                         count=(/i_target,j_target,nz_input+1,1/))
                     call netcdf_err(error, 'WRITING RECORD' )
             endif
