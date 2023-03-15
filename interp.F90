@@ -227,54 +227,60 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
    
-    if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
+    if (n_hist_fields_3d_nzp1>0) then
+       if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
     
-    call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, &
+       call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
                                      
-    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegridStore", rc)
         
-    call ESMF_FieldBundleRegrid(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, rh_patch, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-        call error_handler("IN FieldBundleRegrid", rc)
-    
-    if (localpet==0) print*,"- CREATE HIST BUNDLE CONSERVATIVE REGRID ROUTEHANDLE"
-    method = ESMF_REGRIDMETHOD_CONSERVE
-    call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, &
+       call ESMF_FieldBundleRegrid(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, rh_patch, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleRegrid", rc)
+    endif
+
+    if (n_hist_fields_2d_cons>0) then
+       if (localpet==0) print*,"- CREATE HIST BUNDLE CONSERVATIVE REGRID ROUTEHANDLE"
+       method = ESMF_REGRIDMETHOD_CONSERVE
+       call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, &
                                          regridmethod=method, &
                                          routehandle=rh_cons, &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
                                      
-    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegridStore", rc)
         
-    call ESMF_FieldBundleRegrid(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, rh_cons, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-        call error_handler("IN FieldBundleRegrid", rc)
+       call ESMF_FieldBundleRegrid(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, rh_cons, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleRegrid", rc)
+    endif
 
-    if (localpet==0) print*,"- CREATE HIST BUNDLE NSTD REGRID ROUTEHANDLE"
-    method = ESMF_REGRIDMETHOD_NEAREST_STOD
-    call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, &
+    if (n_hist_fields_2d_nstd>0) then
+       if (localpet==0) print*,"- CREATE HIST BUNDLE NSTD REGRID ROUTEHANDLE"
+       method = ESMF_REGRIDMETHOD_NEAREST_STOD
+       call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, &
                                          regridmethod=method, &
                                          routehandle=rh_nstd, &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
                                      
-    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegridStore", rc)
         
-    call ESMF_FieldBundleRegrid(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, rh_nstd, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-        call error_handler("IN FieldBundleRegrid", rc)
-    
+       call ESMF_FieldBundleRegrid(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, rh_nstd, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleRegrid", rc)
+    endif 
+
     if (n_hist_fields_soil>0) then  
         call ESMF_FieldBundleRegridStore(input_hist_bundle_soil, target_hist_bundle_soil, &
                                          regridmethod=method, &
@@ -292,16 +298,18 @@
     call ESMF_FieldBundleRegridRelease(routehandle=rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
       call error_handler("IN FieldRegridRelease", rc)
-    
-    if (localpet==0) print*,"- CALL FieldRegridRelease."
-    call ESMF_FieldBundleRegridRelease(routehandle=rh_cons, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-      call error_handler("IN FieldRegridRelease", rc)
-      
-      if (localpet==0) print*,"- CALL FieldRegridRelease."
-    call ESMF_FieldBundleRegridRelease(routehandle=rh_nstd, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-      call error_handler("IN FieldRegridRelease", rc)
+    if(n_hist_fields_2d_cons>0) then   
+       if (localpet==0) print*,"- CALL FieldRegridRelease."
+       call ESMF_FieldBundleRegridRelease(routehandle=rh_cons, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldRegridRelease", rc)
+    endif
+    if(n_hist_fields_2d_nstd>0) then
+       if (localpet==0) print*,"- CALL FieldRegridRelease."
+       call ESMF_FieldBundleRegridRelease(routehandle=rh_nstd, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldRegridRelease", rc)
+    endif
   end subroutine interp_hist_data
                 
   subroutine init_target_hist_fields(localpet)

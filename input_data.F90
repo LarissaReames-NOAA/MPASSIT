@@ -282,8 +282,10 @@
  
  if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE LSM SCHEME'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_lsm_scheme',att_text)
- call netcdf_err(error, 'reading config_lsm_scheme')
- if (trim(att_text) == 'noah') then
+ !call netcdf_err(error, 'reading config_lsm_scheme')
+ if (error .ne. 0) then
+    lsm_scheme = 0
+ elseif (trim(att_text) == 'noah') then
     lsm_scheme = 2
  elseif (trim(att_text) == 'ruc') then
     lsm_scheme = 3
@@ -295,29 +297,33 @@
  
  if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE LMP SCHEME'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_microp_scheme',att_text)
- call netcdf_err(error, 'reading config_microp_scheme')
-  if (trim(att_text) == 'mp_thompson') then
+ !call netcdf_err(error, 'reading config_microp_scheme')
+  if (error .ne. 0) then 
+     mp_scheme = 0
+  elseif (trim(att_text) == 'mp_thompson') then
     mp_scheme = 8
- elseif (trim(att_text) == 'mp_nssl2m') then
+  elseif (trim(att_text) == 'mp_nssl2m') then
     mp_scheme = 18
- endif
+  endif
  
  
  if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE CONVECTION SCHEME'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_convection_scheme',att_text)
- call netcdf_err(error, 'reading config_conv_scheme')
- 
-  if (trim(att_text) == 'cu_ntiedke') then
+ !call netcdf_err(error, 'reading config_conv_scheme')
+  if (error .ne. 0) then
+    conv_scheme = 0
+  elseif (trim(att_text) == 'cu_ntiedke') then
     conv_scheme = 16
- elseif (trim(att_text) == 'cu_kain_fritsch') then
+  elseif (trim(att_text) == 'cu_kain_fritsch') then
     conv_scheme = 1
- elseif (trim(att_text) == 'cu_grell_freitas') then
+  elseif (trim(att_text) == 'cu_grell_freitas') then
     conv_scheme = 3
- endif
+  endif
 
  if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE CONFIG_DT'
  error = nf90_get_att(ncid,NF90_GLOBAL,'config_dt',config_dt)
- call netcdf_err(error, 'reading config_dt')
+ !call netcdf_err(error, 'reading config_dt')
+ if (error .ne. 0) config_dt = 0.0
 
  vname = 'xtime'
  if (localpet==0) print*, '- READ TIMES VARIABLE'
@@ -325,8 +331,10 @@
  call netcdf_err(error, 'reading strlen dim id')
  error = nf90_inquire_dimension(ncid,id_var,len=strlen)
  allocate(valid_time(1,strlen))
+ print*, "strlen = ", strlen
  error = nf90_inq_varid(ncid,vname,id_var)
  call netcdf_err(error, 'reading xtime id')
+ print*, "getting xtime"
  error = nf90_get_var(ncid, id_var, valid_time)
  call netcdf_err(error, 'getting xtime')
 
@@ -334,7 +342,9 @@
 ! Initialize 2d esmf atmospheric fields for bilinear/patch interpolation
 !---------------------------------------------------------------------------
 
+ print*, "Begin reading variables"
  if (n_hist_fields_2d_patch > 0) then
+    print*, "read 2d hist"
     allocate(fields(n_hist_fields_2d_patch))
     allocate(target_hist_units_2d_patch(n_hist_fields_2d_patch))
     allocate(target_hist_longname_2d_patch(n_hist_fields_2d_patch))
@@ -351,11 +361,11 @@
      allocate(dummy2(nCells_input,1))
  
      do i = 1,n_hist_fields_2d_patch
-
+        
         call ESMF_FieldGet(fields(i), name=vname, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
-    
+        print*, vname
         call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
@@ -386,6 +396,7 @@
 !---------------------------------------------------------------------------
 
  if (n_hist_fields_2d_cons > 0) then
+    print*, "read 2d hist cons"
     allocate(fields(n_hist_fields_2d_cons))
     allocate(target_hist_units_2d_cons(n_hist_fields_2d_cons))
     allocate(target_hist_longname_2d_cons(n_hist_fields_2d_cons))

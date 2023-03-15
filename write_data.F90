@@ -459,10 +459,9 @@ if (localpet == 0) then
             endif
        enddo
        deallocate(fields)
-       !n2d = k
-       n3d = m
    endif
-   
+   n3d = m
+   !print*, "Writing  ", n3d, "3-d variables" 
    if (interp_hist) then
     if(n_hist_fields_2d_cons>0) then
         allocate(fields(n_hist_fields_2d_cons))
@@ -877,6 +876,9 @@ if (localpet == 0) then
    vs = substr(valid_time(1,1),18,19)
    xtime_dt = datetime(sy,sm,sd,sh,smi,ss) - datetime(vy,vm,vd,vh,vmi,vs)
 
+   print*, trim(start_time)
+   print*, trim(valid_time(1,1))
+   print*, xtime_dt%total_seconds()
    error = nf90_put_var( ncid, id_xtime, (/xtime_dt%total_seconds()/60.0/), count=(/1/))
    call netcdf_err(error, 'WRITING XTIME RECORD' )
  endif
@@ -885,10 +887,14 @@ if (localpet == 0) then
 
  if (localpet==0) print*,"- WRITE TO FILE TARGET GRID ITIMESTEP"
  if (localpet ==0) then
-   error = nf90_put_var( ncid, id_itime, (/int(xtime_dt%total_seconds()/config_dt)/), count=(/1/))
-   call netcdf_err(error, 'WRITING ITIMESTEP RECORD' )
- endif
- 
+   if (config_dt > 0.0) then
+      error = nf90_put_var( ncid, id_itime, (/int(xtime_dt%total_seconds()/config_dt)/), count=(/1/))
+      call netcdf_err(error, 'WRITING ITIMESTEP RECORD' )
+   else
+      error = nf90_put_var( ncid, id_itime, (/0/), count=(/1/))
+      call netcdf_err(error, 'WRITING ITIMESTEP RECORD' )
+   endif
+ endif 
  deallocate(dumsmall)
  
  !  2d fields
@@ -915,7 +921,9 @@ if (localpet == 0) then
  deallocate(dum2d, dum2dt)
 
  !    3d fields from diaglist
+
  if (n3d>0) then
+ print*, "Loop writing over ", n3d, "3-d nz vars"
  do i = 1, n3d
     call ESMF_FieldGet(field_extra3(i), name=varname, rc=error)
     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
@@ -1104,12 +1112,19 @@ if (localpet == 0) then
 
  deallocate(dum3d, dum3dp1, dum3dt, dum3dp1t, dum1d)
  deallocate(id_vars2, id_vars3_nz, id_vars3_nzp1, id_vars_soil)
- deallocate(target_hist_longname_2d_cons, target_hist_longname_2d_nstd)
- deallocate(target_hist_longname_2d_patch, target_hist_longname_3d_nz)
- deallocate(target_hist_longname_3d_nzp1, target_diag_longname)
- deallocate(target_hist_units_2d_cons, target_hist_units_2d_nstd)
- deallocate(target_hist_units_2d_patch, target_hist_units_3d_nz)
- deallocate(target_hist_units_3d_nzp1, target_diag_units)
+ 
+ if (allocated(target_hist_longname_2d_cons)) deallocate(target_hist_longname_2d_cons)
+ if (allocated(target_hist_longname_2d_nstd)) deallocate(target_hist_longname_2d_nstd)
+ if (allocated(target_hist_longname_2d_patch)) deallocate(target_hist_longname_2d_patch)
+ if (allocated(target_hist_longname_3d_nz)) deallocate(target_hist_longname_3d_nz)
+ if (allocated(target_hist_longname_3d_nzp1)) deallocate(target_hist_longname_3d_nzp1)
+ if (allocated(target_diag_longname)) deallocate(target_diag_longname)
+ if (allocated(target_hist_units_2d_cons)) deallocate(target_hist_units_2d_cons)
+ if (allocated(target_hist_units_2d_nstd)) deallocate(target_hist_units_2d_nstd)
+ if (allocated(target_hist_units_2d_patch))  deallocate(target_hist_units_2d_patch)
+ if (allocated(target_hist_units_3d_nz)) deallocate(target_hist_units_3d_nz)
+ if (allocated(target_hist_units_3d_nzp1))  deallocate(target_hist_units_3d_nzp1)
+ if (allocated(target_diag_units)) deallocate(target_diag_units)
 
  if (localpet == 0) error = nf90_close(ncid)
 

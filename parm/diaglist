@@ -1,5 +1,10 @@
-rainc				RAINC
 rainnc				RAINNC
+snowncv				SNOWNCV
+rainncv				RAINNCV
+graupelncv			GRAUPELNCV
+prec_acc_c			PREC_ACC_C
+prec_acc_nc			PREC_ACC_NC
+snow_acc_nc			SNOW_ACC_NC
 refl10cm			REFL_10CM
 refl10cm_max                    COMPOSITE_REFL_10CM
 refl10cm_1km			REFL10CM_1KM
@@ -10,9 +15,4 @@ q2				Q2
 t2m				T2
 th2m				TH2
 updraft_helicity_max		UP_HELI_MAX
-updraft_helicity_max_01		UP_HELI_MAX01
-updraft_helicity_min_03		UP_HELI_MIN03
 w_velocity_max			W_UP_MAX
-w_velocity_min			W_DN_MAX
-wind02_integral_max		SPD02INTMAX
-w_velocity_mean			W_MEAN

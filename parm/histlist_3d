@@ -6,5 +6,10 @@ uReconstructMeridional		V
 qv				QVAPOR
 qc				QCLOUD
 qr				QRAIN
+qi                              QICE
+qs                              QSNOW
+qg                              QGRAUP
+ni                              QNICE
+nr				QNRAIN
 pressure			P_HYD
 rho				MUB
