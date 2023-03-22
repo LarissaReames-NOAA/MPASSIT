@@ -193,6 +193,40 @@
     call netcdf_err(error, 'reading field long_name' )
  enddo
 
+ if (localpet==0) print*,'- TRY TO READ GLOBAL ATTRIBUTE START TIME FROM DIAG FILE'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_start_time',start_time)
+ if ( error .ne. 0 ) then
+    if (interp_hist) then
+       if (localpet==0) then
+           print*,'GETTING GLOBAL ATTRIBUTE START TIME FROM DIAG FILE FAILED'
+           print*,'...THAT IS OK...TRY TO GET FROM HISTORY FILE'
+       endif
+    else
+       call netcdf_err(error, 'reading config_start_time')
+    endif
+ endif
+
+ if (localpet==0) print*,'- TRY TO READ GLOBAL ATTRIBUTE CONFIG_DT FROM DIAG FILE'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'config_dt',config_dt)
+ if (error .ne. 0) then
+    if (localpet==0) then
+        print*,'GETTING GLOBAL ATTRIBUTE CONFIG_DT FROM DIAG FILE FAILED'
+        print*,'...THAT IS OK...SET TO 0 AND TRY TO GET FROM HISTORY FILE'
+    endif
+    config_dt = 0.0
+ endif
+
+ if (localpet==0) print*, "getting xtime"
+ error = nf90_inq_dimid(ncid,'StrLen',id_var)
+ call netcdf_err(error, 'reading strlen dim id')
+ error = nf90_inquire_dimension(ncid,id_var,len=strlen)
+ allocate(valid_time(1,strlen))
+ if (localpet==0) print*, "strlen = ", strlen
+ error = nf90_inq_varid(ncid,'xtime',id_var)
+ call netcdf_err(error, 'reading xtime id')
+ error = nf90_get_var(ncid, id_var, valid_time)
+ call netcdf_err(error, 'getting xtime')
+
  error = nf90_close(ncid)
 
 
@@ -330,7 +364,7 @@
  error = nf90_inq_dimid(ncid,'StrLen',id_var)
  call netcdf_err(error, 'reading strlen dim id')
  error = nf90_inquire_dimension(ncid,id_var,len=strlen)
- allocate(valid_time(1,strlen))
+ if ( .not. allocated(valid_time)) allocate(valid_time(1,strlen)) !may have been allocated in read_input_diag_data, hence the condition
  print*, "strlen = ", strlen
  error = nf90_inq_varid(ncid,vname,id_var)
  call netcdf_err(error, 'reading xtime id')
