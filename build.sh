@@ -6,7 +6,8 @@ set -eux
 
 target=${target:-"NULL"}
 compiler=${compiler:-"intel"}
-
+echo $target 
+echo $compiler
 if [[ "$target" == "linux.*" || "$target" == "macosx.*" ]]; then
  unset -f module
  set +x

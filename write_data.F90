@@ -178,6 +178,9 @@ if (localpet == 0) then
    
    error = nf90_put_att(ncid, NF90_GLOBAL, 'DX', dx)
    call netcdf_err(error, 'DEFINING DX GLOBAL ATTRIBUTE')
+
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'DT', config_dt)
+   call netcdf_err(error, 'DEFINING DT GLOBAL ATTRIBUTE')
    
    error = nf90_put_att(ncid, NF90_GLOBAL, 'SF_SURFACE_PHYSICS', lsm_scheme)
    call netcdf_err(error, 'DEFINING SF SURFACE PHYSICS GLOBAL ATTRIBUTE')
