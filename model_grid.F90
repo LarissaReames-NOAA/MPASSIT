@@ -69,13 +69,13 @@
                                            !< target grid longitude on the
                                            !< staggered v grid
  real,allocatable,public                :: MAPFAC_M(:,:)
-                                            !< target grid latitude on the
-                                            !< staggered u grid
+                                            !< target grid mapfac on the mass grid
+                                            !< no stagger
 real,allocatable,public                :: MAPFAC_V(:,:)
-                                            !< target grid latitude on the
+                                            !< target grid mapfac on the
                                             !< staggered v grid
 real,allocatable,public                :: MAPFAC_U(:,:)
-                                            !< target grid longitude on the
+                                            !< target grid mapfac on the
                                             !< staggered u grid
  integer, public                        :: map_proj
                                            !< target grid map projection integer label
