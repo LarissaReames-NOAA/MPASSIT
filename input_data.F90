@@ -67,7 +67,7 @@
                                     n_hist_fields_3d_nzp1, &
                                     n_hist_fields_soil, &
                                     elemIDs, nCellsPerPET, &
-                                    nodeIDs
+                                    nodeIDs,diag_out_interval
 
  implicit none
 
@@ -214,6 +214,13 @@
         print*,'...THAT IS OK...SET TO 0 AND TRY TO GET FROM HISTORY FILE'
     endif
     config_dt = 0.0
+ endif
+
+ if (localpet==0) print*,'- read output_interval from diag file'
+ error = nf90_get_att(ncid,NF90_GLOBAL,'output_interval',diag_out_interval)
+ if (error .ne. 0) then
+   print*, 'error reading output_interval from diag file, setting to 0'
+   diag_out_interval = 0
  endif
 
  if (localpet==0) print*, "getting xtime"

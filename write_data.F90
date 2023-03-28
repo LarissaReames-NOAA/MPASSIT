@@ -69,7 +69,8 @@
                                      target_hist_longname_2d_patch, &
                                      target_hist_longname_3d_nzp1, &
                                      target_hist_longname_3d_nz, &
-                                     target_hist_longname_soil
+                                     target_hist_longname_soil, &
+                                     diag_out_interval
 
  implicit none
 
@@ -223,6 +224,11 @@ if (localpet == 0) then
 
    error = nf90_put_att(ncid, NF90_GLOBAL, 'MAP_PROJ_CHAR', map_proj_char)
    call netcdf_err(error, 'DEFINING MAP_PROJ_CHAR GLOBAL ATTRIBUTE')
+
+   if (interp_diag) then
+     error = nf90_put_att(ncid, NF90_GLOBAL, 'PREC_ACC_DT', diag_out_interval)
+     call netcdf_err(error, 'DEFINING PREC_ACC_DT GLOBAL ATTRIBUTE')
+   endif
 
 !--- define fields
 

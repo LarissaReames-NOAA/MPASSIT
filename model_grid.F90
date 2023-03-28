@@ -142,8 +142,11 @@
  integer, public                       :: n_hist_fields_3d_nzp1
                                           !< number of 3d fields read from the hist file
                                           !< with vertical dimension nVertLevelsp1
-  integer, public                      :: n_hist_fields_soil
+ integer, public                      :: n_hist_fields_soil
                                           !< number of soil fields read from the hist file
+
+ integer, public                       :: diag_out_interval
+                                         !< output_interval from diag file
  character(50), allocatable, public    :: target_diag_names(:), &
                                           target_hist_names_2d_cons(:), &
                                           target_hist_names_2d_nstd(:), &
