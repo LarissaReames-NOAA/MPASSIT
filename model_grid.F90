@@ -9,6 +9,11 @@
 
  use esmf
  use ESMF_LogPublicMod
+ use utils_mod
+ use constants_module
+ use misc_definitions_module
+ use map_utils_mod
+ use program_setup
 
  implicit none
 
@@ -44,14 +49,8 @@
                                            !< target grid projection center latitude
  real, public                           :: cen_lon
                                            !< target grid projection center longitude
- real, public                           :: truelat1
-                                           !< target grid projection 1st true latitude
- real, public                           :: truelat2
-                                           !< target grid projection 2nd true latitude
  real, public                           :: moad_cen_lat
                                            !< target grid moad center latitude
- real, public                           :: stand_lon
-                                           !< target grid projection standard longitude
  real, public                           :: pole_lat
                                            !< target grid projection pole latitude
  real, public                           :: pole_lon
@@ -68,13 +67,13 @@
  real,allocatable,public                :: longitude_v(:,:)
                                            !< target grid longitude on the
                                            !< staggered v grid
- real,allocatable,public                :: MAPFAC_M(:,:)
+ real,allocatable,public                :: mapfac_m(:,:)
                                             !< target grid mapfac on the mass grid
                                             !< no stagger
-real,allocatable,public                :: MAPFAC_V(:,:)
+real,allocatable,public                 :: mapfac_v(:,:)
                                             !< target grid mapfac on the
                                             !< staggered v grid
-real,allocatable,public                :: MAPFAC_U(:,:)
+real,allocatable,public                 :: mapfac_u(:,:)
                                             !< target grid mapfac on the
                                             !< staggered u grid
  integer, public                        :: map_proj
@@ -200,6 +199,7 @@ real,allocatable,public                :: MAPFAC_U(:,:)
  public :: cleanup_input_target_grid_data
 
  contains
+ 
 
 !> Define input grid object for MPAS input data.
 !!
@@ -524,21 +524,148 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  
  subroutine define_target_grid_params(localpet,npets)
  
- use program_setup, only : x,ny,dx,dy,ref_lat,ref_lon,ref_x,ref_y,&
-            			   truelat1,truelat2,stand_lon
+ use netcdf
+
+ use llxy_module
+
+ implicit none
+
+ integer, intent(in)          :: localpet, npets
+
+ integer                      :: error, extra, i, j, clb(2), cub(2)
+
+
+ real(esmf_kind_r8), allocatable       :: latitude(:,:), longitude(:,:), &
+                                          dum2d(:,:),latitude_corner(:,:), &
+                                          longitude_corner(:,:)
+ integer                               :: ncid,id_var, id_dim
+ real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:)
+ type(esmf_polekind_flag)       	   :: polekindflag(2)
  
+ ip1_target = i_target + 1
+ jp1_target = j_target + 1
  
- 
+ !----------------------------------------------------------------------
+ ! Fill proj object for target grid projection
+ !----------------------------------------------------------------------
+ call push_source_projection(proj_code, stand_lon, truelat1, truelat2, &
+							  dxkm, dykm, dykm, dxkm, known_x, known_y, &
+							  known_lat, known_lon)
+							  
 !-----------------------------------------------------------------------
 ! Create ESMF grid object for the model grid.
 !-----------------------------------------------------------------------
 
- if (localpet==0) print*,"- CALL GridCreateNoPeriDim FOR TARGET MODEL GRID"
- target_grid = ESMF_GridCreateNoPeriDim(maxIndex=(/i_target,j_target/), &
-                                       indexflag=ESMF_INDEX_GLOBAL, &
-                                       rc=error)
+ if (grid_type == 'll_global' ) then
+ 	 polekindflag(1:2) = ESMF_POLEKIND_MONOPOLE
+	 print*,"- CALL GridCreate1PeriDim FOR INPUT GRID."
+	 input_grid = ESMF_GridCreate1PeriDim(minIndex=(/1,1/), &
+										maxIndex=(/i_target,j_target/), &
+										polekindflag=polekindflag, &
+										periodicDim=1, &
+										poleDim=2,  &
+										coordSys=ESMF_COORDSYS_SPH_DEG, &
+										regDecomp=(/1,npets/),  &
+										indexflag=ESMF_INDEX_GLOBAL, rc=rc)
+	 if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+	   call error_handler("IN GridCreate1PeriDim", rc)
+ else
+	 if (localpet==0) print*,"- CALL GridCreateNoPeriDim FOR TARGET MODEL GRID"
+	 target_grid = ESMF_GridCreateNoPeriDim(maxIndex=(/i_target,j_target/), &
+										   indexflag=ESMF_INDEX_GLOBAL, &
+										   rc=error)
+	 if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+		call error_handler("IN GridCreateNoPeriDim", error)
+ endif
+    
+ if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID CENTER."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_CENTER, rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-    call error_handler("IN GridCreateNoPeriDim", error)
+    call error_handler("IN GridAddCoord", error)
+    
+  if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID CORNER."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_CORNER, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+    call error_handler("IN GridAddCoord", error)
+    
+  if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID EDGE1."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_EDGE1, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+    call error_handler("IN GridAddCoord", error)
+    
+  if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID EDGE2."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_EDGE2, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+    call error_handler("IN GridAddCoord", error)
+							  
+   
+!-----------------------------------------------------------------------
+! Generate lat/lon array values for various staggers
+!----------------------------------------------------------------------- 
+
+ !Grid centers
+ call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_CENTER, &
+                          coordDim=2, &
+                          computationalLBound=clb, &
+                          computationalUBound=cub, &
+                          rc=error)  
+                          
+ allocate(latitude(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude(clb(1):cub(1),clb(2):cub(2))
+ allocate(mapfac_m(clb(1):cub(1),clb(2):cub(2)))     			   
+ call get_lat_lon_fields(latitude, longitude, clb(1),clb(2),cub(1),cub(2),M) 
+ call get_map_factor(latitude, longitude, mapfac_m, mapfac_m, clb(1),clb(2),cub(1),cub(2))
+ 
+ !y-dir stagger (V)
+ 
+  call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_EDGE2, &
+                          coordDim=2, &
+                          computationalLBound=clb, &
+                          computationalUBound=cub, &
+                          rc=error)  
+                          
+ allocate(latitude_v(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude_v(clb(1):cub(1),clb(2):cub(2))  
+ allocate(mapfac_v(clb(1):cub(1),clb(2):cub(2))) 
+ call get_lat_lon_fields(latitude_v, longitude_v, clb(1),clb(2),cub(1),cub(2), V)
+ call get_map_factor(latitude_v, longitude_v, mapfac_v, mapfac_v, clb(1),clb(2),cub(1),cub(2))
+ 
+ 
+ !x-dir stagger (U)
+ 
+  call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_EDGE1, &
+                          coordDim=2, &
+                          computationalLBound=clb, &
+                          computationalUBound=cub, &
+                          rc=error)  
+                          
+ allocate(latitude_u(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude_u(clb(1):cub(1),clb(2):cub(2))  
+ allocate(mapfac_u(clb(1):cub(1),clb(2):cub(2))) 
+ call get_lat_lon_fields(latitude_u, longitude_u, clb(1),clb(2),cub(1),cub(2), U)
+ call get_map_factor(latitude_u, longitude_u, mapfac_u, mapfac_u, clb(1),clb(2),cub(1),cub(2))
+ 
+ !corner
+call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_CORNER, &
+                          coordDim=2, &
+                          computationalLBound=clb, &
+                          computationalUBound=cub, &
+                          rc=error)
+                          
+ allocate(latitude_corner(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude_corner(clb(1):cub(1),clb(2):cub(2)) 
+ call get_lat_lon_fields(latitude_corner, longitude_corner, clb(1),clb(2),cub(1),cub(2),CORNER)
+ 
+! call get_lat_lon_fields(clat_array, clon_array, start_mem_i, &
+!					   start_mem_j, end_mem_i, end_mem_j, M, comp_ll=.true.)
 
 
 !-----------------------------------------------------------------------
@@ -586,12 +713,6 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  call ESMF_FieldScatter(hgt_target_grid, real(dum2d,esmf_kind_r8), rootpet=0, rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
    call error_handler("IN FieldScatter", error)
-
- if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID."
- call ESMF_GridAddCoord(target_grid, &
-                        staggerloc=ESMF_STAGGERLOC_CENTER, rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-    call error_handler("IN GridAddCoord", error)
 
  if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
    nullify(lon_src_ptr)
@@ -649,13 +770,22 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
     call error_handler("IN GridGetCoord", error)
 
- call get_cell_corners(latitude, longitude, lat_src_ptr, lon_src_ptr, dx, clb, cub)
+ do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+          lon_src_ptr(i,j)=real(longitude_corner(i,j),esmf_kind_r8)
+          lat_src_ptr(i,j)=real(latitude_corner(i,j),esmf_kind_r8)
+      enddo
+ enddo
+ 
+ ! Define some extra projection-related values 
+ call xytoll(i_target/2.0,j_target/2.0,cen_lat,cen_lon,M)
 
  nullify(lon_src_ptr)
  nullify(lat_src_ptr)
  deallocate(longitude)
  deallocate(latitude)
- deallocate(dum2d)
+ deallocate(longitude_corner)
+ deallocate(latitude_corner)
  
  end subroutine define_target_grid_params
  
@@ -1243,5 +1373,156 @@ subroutine unique_sort(val,nvals, final)
     enddo
     allocate(final(i), source=unique(1:i))   !<-- Or, just use unique(1:i)
 end subroutine unique_sort
+
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Name: get_map_factor
+   !
+   ! Purpose: Given the latitude field, this routine calculates map factors for 
+   !   the grid points of the specified domain. For different grids (e.g., C grid, 
+   !   E grid), the latitude array should provide the latitudes of the points for
+   !   which map factors are to be calculated. 
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   subroutine get_map_factor(xlat_arr, xlon_arr, mapfac_arr_x, mapfac_arr_y, &
+                             start_mem_i, start_mem_j, end_mem_i, end_mem_j)
+   
+      use constants_module
+      use program_setup
+      use misc_definitions_module
+      use map_utils_mod
+    
+      implicit none
+    
+      ! Arguments
+      integer, intent(in) :: start_mem_i, start_mem_j, end_mem_i, end_mem_j
+      real, dimension(start_mem_i:end_mem_i, start_mem_j:end_mem_j), intent(in) :: xlat_arr, xlon_arr
+      real, dimension(start_mem_i:end_mem_i, start_mem_j:end_mem_j), intent(out) :: mapfac_arr_x
+      real, dimension(start_mem_i:end_mem_i, start_mem_j:end_mem_j), intent(out) :: mapfac_arr_y
+    
+      ! Local variables
+      integer :: i, j
+      real :: n, colat, colat0, colat1, colat2, comp_lat, comp_lon
+    
+      !
+      ! Equations for map factor given in Principles of Meteorological Analysis,
+      ! Walter J. Saucier, pp. 32-33 
+      !
+    
+      ! Lambert conformal projection
+      if (iproj_type == PROJ_LC) then
+         if (truelat1 /= truelat2) then
+            colat1 = rad_per_deg*(90.0 - truelat1)
+            colat2 = rad_per_deg*(90.0 - truelat2)
+            n = (log(sin(colat1)) - log(sin(colat2))) &
+                / (log(tan(colat1/2.0)) - log(tan(colat2/2.0)))
+      
+            do i=start_mem_i, end_mem_i
+               do j=start_mem_j, end_mem_j
+                  colat = rad_per_deg*(90.0 - xlat_arr(i,j))
+                  mapfac_arr_x(i,j) = sin(colat2)/sin(colat)*(tan(colat/2.0)/tan(colat2/2.0))**n
+                  mapfac_arr_y(i,j) = mapfac_arr_x(i,j)
+               end do
+            end do
+     
+         else
+            colat0 = rad_per_deg*(90.0 - truelat1)
+      
+            do i=start_mem_i, end_mem_i
+               do j=start_mem_j, end_mem_j
+                  colat = rad_per_deg*(90.0 - xlat_arr(i,j))
+                  mapfac_arr_x(i,j) = sin(colat0)/sin(colat)*(tan(colat/2.0)/tan(colat0/2.0))**cos(colat0)
+                  mapfac_arr_y(i,j) = mapfac_arr_x(i,j)
+               end do
+            end do
+    
+         end if
+    
+      ! Polar stereographic projection
+      else if (iproj_type == PROJ_PS) then
+    
+         do i=start_mem_i, end_mem_i
+            do j=start_mem_j, end_mem_j
+               mapfac_arr_x(i,j) = (1.0 + sin(rad_per_deg*abs(truelat1)))/(1.0 + sin(rad_per_deg*sign(1.,truelat1)*xlat_arr(i,j)))
+               mapfac_arr_y(i,j) = mapfac_arr_x(i,j)
+            end do
+         end do
+    
+      ! Mercator projection 
+      else if (iproj_type == PROJ_MERC) then
+         colat0 = rad_per_deg*(90.0 - truelat1)
+     
+         do i=start_mem_i, end_mem_i
+            do j=start_mem_j, end_mem_j
+               colat = rad_per_deg*(90.0 - xlat_arr(i,j))
+               mapfac_arr_x(i,j) = sin(colat0) / sin(colat) 
+               mapfac_arr_y(i,j) = mapfac_arr_x(i,j)
+            end do
+         end do
+    
+      ! Global cylindrical projection
+      else if (iproj_type == PROJ_CYL) then
+     
+         do i=start_mem_i, end_mem_i
+            do j=start_mem_j, end_mem_j
+               if (abs(xlat_arr(i,j)) == 90.0) then
+                  mapfac_arr_x(i,j) = 0.    ! MSF actually becomes infinite at poles, but 
+                                            !   the values should never be used there; by
+                                            !   setting to 0, we hope to induce a "divide
+                                            !   by zero" error if they are
+               else
+                  mapfac_arr_x(i,j) = 1.0 / cos(xlat_arr(i,j)*rad_per_deg) 
+               end if
+               mapfac_arr_y(i,j) = 1.0
+            end do
+         end do
+    
+      ! Rotated global cylindrical projection
+      else if (iproj_type == PROJ_CASSINI) then
+     
+         if (abs(pole_lat) == 90.) then
+            do i=start_mem_i, end_mem_i
+               do j=start_mem_j, end_mem_j
+                  if (abs(xlat_arr(i,j)) >= 90.0) then
+                     mapfac_arr_x(i,j) = 0.    ! MSF actually becomes infinite at poles, but 
+                                               !   the values should never be used there; by
+                                               !   setting to 0, we hope to induce a "divide
+                                               !   by zero" error if they are
+                  else
+                     mapfac_arr_x(i,j) = 1.0 / cos(xlat_arr(i,j)*rad_per_deg) 
+                  end if
+                  mapfac_arr_y(i,j) = 1.0
+               end do
+            end do
+         else
+            do i=start_mem_i, end_mem_i
+               do j=start_mem_j, end_mem_j
+                  call rotate_coords(xlat_arr(i,j),xlon_arr(i,j), &
+                                     comp_lat, comp_lon, &
+                                     pole_lat, pole_lon, stand_lon, &
+                                     -1)
+                  if (abs(comp_lat) >= 90.0) then
+                     mapfac_arr_x(i,j) = 0.    ! MSF actually becomes infinite at poles, but 
+                                               !   the values should never be used there; by
+                                               !   setting to 0, we hope to induce a "divide
+                                               !   by zero" error if they are
+                  else
+                     mapfac_arr_x(i,j) = 1.0 / cos(comp_lat*rad_per_deg) 
+                  end if
+                  mapfac_arr_y(i,j) = 1.0
+               end do
+            end do
+         end if
+    
+      else if (iproj_type == PROJ_ROTLL) then
+    
+         do i=start_mem_i, end_mem_i
+            do j=start_mem_j, end_mem_j
+               mapfac_arr_x(i,j) = 1.0
+               mapfac_arr_y(i,j) = 1.0
+            end do
+         end do
+    
+      end if
+   
+   end subroutine get_map_factor
 
  end module model_grid

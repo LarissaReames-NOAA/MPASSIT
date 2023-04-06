@@ -9,12 +9,16 @@
 
  use esmf
  use ESMF_LogPublicMod
+ use constants_module
+ use utils_mod
 
  implicit none
 
  private
 
  type(ESMF_LogKind_Flag), public :: LogType 
+ 
+ ! Namelist variables
  character(len=500), public      :: grid_file_input_grid = "NULL" !< Full path of MPAS file containing grid information
  character(len=500), public      :: diag_file_input_grid = "NULL" !< Full path of input diagnostic MPAS data
  character(len=500), public      :: hist_file_input_grid = "NULL" !< Full path of input history MPAS data
@@ -27,27 +31,36 @@
                                                            !< to conform to WRF format. Set to true for
                                                            !< UPP-compatible output
  character(len=500), public      :: target_grid_type	  !< Grid type to interpolate data to
- 														  !< Valid options: 'file', 'lcc','ll','ll_global'
- 														  
+ 														  !< Valid options: 'file', 'lcc','ll','ll_global'														  
  !! These entries are only valid for target_grid_type = 'lcc','ll','ll_global'
- integer, public 				 :: nx					  !< # staggered east-west grid points in target grid
- integer, public				 :: ny					  !< # staggered north-south grid points in target grid									  
- real, public					 :: dx 					  !< grid-cell east-west dimension 
- 														  !< (LCC meters, LL degrees)
- real, public					 :: dy 					  !< grid-cell north-south dimension (meters)
-  														  !< (LCC meters, LL degrees)
- real, public					 :: ref_lat = NAN		  !< Latitude of reference point
- real, public					 :: ref_lon	= NAN		  !< Longitude of reference point
- real, public					 :: ref_x = NAN			  !< Grid-relative e-w index of reference point
+ integer, public 				 :: i_target			  !< # staggered east-west grid points in target grid
+ integer, public				 :: j_target     		  !< # staggered north-south grid points in target grid									  
+ real, public					 :: truelat1 = NAN     	  !< First true latitude (all projections)
+ real, public					 :: truelat2 = NAN     	  !< Second true latitude (LCC only)
+ real, public					 :: stand_lon = NAN		  !< Longitude parallel to y-axis (-180->180E)
+ real, public					 :: dx = NAN			  !< Grid cell east-west dimension(meters)
+ real, public					 :: dy = NAN			  !< Grid cell north-south dimension(meters)
+ real, public					 :: ref_lat				  !< Latitude of reference point
+ real, public					 :: ref_lon   	 	      !< Longitude of reference point
+ real, public					 :: ref_x				  !< Grid-relative e-w index of reference point
  														  !< Defaults to grid center (nx/2)
- real, public					 :: ref_y = NAN			  !< Grid-relative n-s index of reference point
- 														  !< Defaults to grid center (ny/2)				  
- real, public					 :: truelat1 = NAN     	  !< ! First true latitude (all projections)
- real, public					 :: truelat2 = NAN     	  !< ! Second true latitude (LCC only)
- real, public					 :: stand_lon = NAN		  ! Longitude parallel to y-axis (-180->180E)
-
+ real, public					 :: ref_y		  		  !< Grid-relative n-s index of reference point
+ 														  !< Defaults to grid center (ny/2)	
+  
+ 
+ !These aren't namelist variables but they're created directly from them
+ real, public					 :: dxkm				  !< grid-cell east-west dimension (meters)
+ real, public					 :: dykm 				  !< grid-cell north-south dimension (meters)
+ real, public					 :: dlondeg				  !< grid-cell east-west dimension (deg)
+ real, public					 :: dlatdeg				  !< grid-cell north-south dimension (deg)
+ real, public					 :: known_lat			  !< Latitude of reference point
+ real, public					 :: known_lon   	      !< Longitude of reference point
+ real, public					 :: known_x				  !< Grid-relative e-w index of reference point
+ real, public					 :: known_y		  		  !< Grid-relative n-s index of reference point	
+ real, public					 :: proj_code			  !< Integer code corresponding to the requested
+ 														  ! target grid projection type
+  
  public :: read_setup_namelist
-
 
  contains
 
@@ -66,13 +79,24 @@
  logical                   :: esmf_log
 
  integer                     :: is, ie, ierr
+ 
+ !Namelist variables that are used to create global variables
+ real						:: dx,dy
 
 
  namelist /config/ grid_file_input_grid, diag_file_input_grid, hist_file_input_grid, &
             file_target_grid, output_file, interp_diag, interp_hist, &
             wrf_mod_vars, esmf_log,target_grid_type,nx,ny,dx,dy,ref_lat,ref_lon,ref_x,ref_y,&
             truelat1,truelat2,stand_lon
-                        
+
+  ref_x = NAN
+  ref_y = NAN
+  ref_lat = NAN
+  ref_lon = NAN
+  dx = NAN
+  dy = NAN 
+  pole_lat = 90.0
+  pole_lon = 0.0                   
 
  !print*,"- READ SETUP NAMELIST"
 
@@ -100,10 +124,23 @@
    LogType = ESMF_LOGKIND_NONE
  endif 
  
+ dxkm = dx
+ dykm = dy
+ 
+ known_lat = ref_lat
+ known_lon = ref_lon
+ known_x = ref_x
+ known_y = ref_y
+ 
  if (trim(target_grid_type)=='ll' .or. trim(target_grid_type)=='ll_global') then
 
 	 ! If no dx,dy specified, assume global grid
 	 if (dx == NAN .and. dy == NAN) then
+	    if (trim(target_grid_type) .ne. 'll_global') then
+	    	call error_handler("For lat-lon projection, if dx/dy are not specified "// &
+	    	"a global grid is assumed. Please set dx/dy or change target_grid_type to "// &
+	    	"'ll_global'", ERROR)
+	    endif
 		dlondeg = 360. / (nx)   ! Here, we really do not want e_we-s_we+1
 		dlatdeg = 180. / (ny)   ! Here, we really do not want e_we-s_we+1
 		known_x = 1.
@@ -131,6 +168,14 @@
 	 if (truelat1 == NAN) call error_handler("No TRUELAT1 specified for Lambert conformal projection.",ERROR)) 
 	 truelat2 = truelat1
   end if
+  
+  ! If the user hasn't supplied a known_x and known_y, assume the center of domain 1
+  if (known_x == NAN .and. known_y == NAN) then
+	known_x = ixdim(1) / 2.
+	known_y = jydim(1) / 2.
+  else if (known_x == NAN .or. known_y == NAN) then
+	call error_handler('In namelist, neither or both of ref_x, ref_y must be specified.',ERROR)
+  end if 
 
  return
  

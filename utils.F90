@@ -1,3 +1,7 @@
+module utils_mod
+
+ integer, parameter :: DEBUG=0, INFORM=1, WARN=2, ERROR=3
+
 !> @file
 !! @brief Contains utility routines.
 !!
@@ -49,4 +53,4 @@
  return
  end subroutine netcdf_err
  
-
+ end utils_mod
