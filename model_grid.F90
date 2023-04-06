@@ -511,6 +511,155 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
 !! @param [in] npets Number of persistent execution threads
 !! @author Larissa Reames CIWRO/NOAA/NSSL/FRDD
  subroutine define_target_grid(localpet, npets)
+ 
+ use program_setup, only : target_grid_type
+ 
+ if(trim(target_grid_type) == 'file')
+ 	call define_target_grid_file(localpet,npets)
+ else
+ 	call define_target_grid_file(localpet,npets)
+ endif
+ 
+ end subroutine define_target_grid
+ 
+ subroutine define_target_grid_params(localpet,npets)
+ 
+ use program_setup, only : x,ny,dx,dy,ref_lat,ref_lon,ref_x,ref_y,&
+            			   truelat1,truelat2,stand_lon
+ 
+ 
+ 
+!-----------------------------------------------------------------------
+! Create ESMF grid object for the model grid.
+!-----------------------------------------------------------------------
+
+ if (localpet==0) print*,"- CALL GridCreateNoPeriDim FOR TARGET MODEL GRID"
+ target_grid = ESMF_GridCreateNoPeriDim(maxIndex=(/i_target,j_target/), &
+                                       indexflag=ESMF_INDEX_GLOBAL, &
+                                       rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+    call error_handler("IN GridCreateNoPeriDim", error)
+
+
+!-----------------------------------------------------------------------
+! Read the mask and lat/lons.
+!-----------------------------------------------------------------------
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
+ latitude_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                   name="target_grid_latitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LONGITUDE."
+ longitude_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                   name="target_grid_longitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID HGT."
+ hgt_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID LATITUDE. "
+ call ESMF_FieldScatter(latitude_target_grid, real(latitude,esmf_kind_r8), rootpet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+   call error_handler("IN FieldScatter", error)
+
+ if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID LONGITUDE."
+ call ESMF_FieldScatter(longitude_target_grid, real(longitude,esmf_kind_r8), rootpet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+   call error_handler("IN FieldScatter", error)
+
+  if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID HGT."
+ call ESMF_FieldScatter(hgt_target_grid, real(dum2d,esmf_kind_r8), rootpet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+   call error_handler("IN FieldScatter", error)
+
+ if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_CENTER, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+    call error_handler("IN GridAddCoord", error)
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
+   nullify(lon_src_ptr)
+   call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_CENTER, &
+                          coordDim=1, &
+                          farrayPtr=lon_src_ptr, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+      call error_handler("IN GridGetCoord", error)
+
+   if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID Y-COORD."
+   nullify(lat_src_ptr)
+   call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_CENTER, &
+                          coordDim=2, &
+                          computationalLBound=clb, &
+                          computationalUBound=cub, &
+                          farrayPtr=lat_src_ptr, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+      call error_handler("IN GridGetCoord", error)
+
+    do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+        lon_src_ptr(i,j)=real(longitude(i,j),esmf_kind_r8)
+        lat_src_ptr(i,j)=real(latitude(i,j),esmf_kind_r8)
+      enddo
+    enddo
+
+  nullify(lon_src_ptr)
+  nullify(lat_src_ptr)
+
+ if (localpet==0) print*,"- CALL GridAddCoord FOR TARGET GRID."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_CORNER, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    call error_handler("IN GridAddCoord", error)
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
+
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_CORNER, &
+                        coordDim=1, &
+                        farrayPtr=lon_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    call error_handler("IN GridGetCoord", error)
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID Y-COORD."
+
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_CORNER, &
+                        coordDim=2, &
+                        computationalLBound=clb, &
+                        computationalUBound=cub, &
+                        farrayPtr=lat_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    call error_handler("IN GridGetCoord", error)
+
+ call get_cell_corners(latitude, longitude, lat_src_ptr, lon_src_ptr, dx, clb, cub)
+
+ nullify(lon_src_ptr)
+ nullify(lat_src_ptr)
+ deallocate(longitude)
+ deallocate(latitude)
+ deallocate(dum2d)
+ 
+ end subroutine define_target_grid_params
+ 
+ subroutine define_target_grid_file(localpet,npets)
 
  use netcdf
  use program_setup, only       : file_target_grid
@@ -831,7 +980,7 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  deallocate(latitude)
  deallocate(dum2d)
 
- end subroutine define_target_grid
+ end subroutine define_target_grid_file
 
  !> For grids with equal cell sizes (e.g., lambert conformal), get lat and on of the grid
 !! cell corners
