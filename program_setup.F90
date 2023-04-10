@@ -134,19 +134,48 @@
  endif 
  
  if (trim(target_grid_type) .ne. 'file') then
- dxkm = dx
- dykm = dy
+   dxkm = dx
+   dykm = dy
  
- known_lat = ref_lat
- known_lon = ref_lon
- known_x = ref_x
- known_y = ref_y
- i_target = nx
- j_target = ny
+   known_lat = ref_lat
+   known_lon = ref_lon
+   known_x = ref_x
+   known_y = ref_y
+   i_target = nx
+   j_target = ny
  
- if (trim(target_grid_type)=='lat-lon') then
-        proj_code=PROJ_LATLON
-        map_proj_char = 'Lat/Lon'
+   map_proj = to_upper(target_grid_type)
+ 
+ 
+   ! Assign parameters to module variables
+   if ((index(map_proj, 'LAMBERT') /= 0) .and. &
+      (len_trim(map_proj) == len('LAMBERT'))) then
+     proj_code = PROJ_LC 
+     map_proj_char = 'Lambert Conformal'
+
+   else if ((index(map_proj, 'MERCATOR') /= 0) .and. &
+           (len_trim(map_proj) == len('MERCATOR'))) then
+     proj_code = PROJ_MERC 
+     map_proj_char = 'Mercator'
+
+   else if ((index(map_proj, 'POLAR') /= 0) .and. &
+           (len_trim(map_proj) == len('POLAR'))) then
+     proj_code = PROJ_PS 
+     map_proj_char = "Polar Stereographic"
+
+   else if ((index(map_proj, 'LAT-LON') /= 0) .and. &
+           (len_trim(map_proj) == len('LAT-LON'))) then
+     proj_code = PROJ_CASSINI 
+     map_proj_char = 'Lat/Lon'
+   else
+     call mprintf(.true.,ERROR,&
+                  'In namelist, invalid target_grid_type specified. Valid '// &
+                  'projections are "lambert", "mercator", "polar", and '// &
+                  '"lat-lon".')
+   end if
+ 
+ 
+   if (proj_code = PROJ_CASSINI) then
      ! If no dx,dy specified, assume global grid
      if (dx == NAN .and. dy == NAN) then
         if (is_regional) then
@@ -179,15 +208,12 @@
                     'a regional domain is assumed, and a ref_lat,ref_lon must also be specified',ERROR_CODE)
         end if
      end if
- end if
+   end if
  
  ! Manually set truelat2 = truelat1 if truelat2 not specified for Lambert
-  if (trim(target_grid_type) == 'lambert' .and. truelat2 == NAN) then
+  if (proj_code=='PROJ_LC' truelat2 == NAN) then
      if (truelat1 == NAN) call error_handler("No TRUELAT1 specified for Lambert conformal projection.",ERROR_CODE) 
      truelat2 = truelat1
-  elseif (trim(target_grid_type) == 'lcc') then
-        proj_code=PROJ_LC
-        map_proj_char = 'Lambert Conformal'
   endif
   
   ! If the user hasn't supplied a known_x and known_y, assume the center of domain 1
