@@ -55,37 +55,6 @@
                                            !< target grid projection pole latitude
  real, public                           :: pole_lon
                                            !< target grid projection pole longitude
- real,allocatable,public                :: latitude_u(:,:)
-                                           !< target grid latitude on the
-                                           !< staggered u grid
- real,allocatable,public                :: latitude_v(:,:)
-                                           !< target grid latitude on the
-                                           !< staggered v grid
- real,allocatable,public                :: longitude_u(:,:)
-                                           !< target grid longitude on the
-                                           !< staggered u grid
- real,allocatable,public                :: longitude_v(:,:)
-                                           !< target grid longitude on the
-                                           !< staggered v grid
- real,allocatable,public                :: mapfac_m(:,:)
-                                            !< target grid mapfac on the mass grid
-                                            !< no stagger
-real,allocatable,public                 :: mapfac_v(:,:)
-                                            !< target grid mapfac on the
-                                            !< staggered v grid
-real,allocatable,public                 :: mapfac_u(:,:)
-                                            !< target grid mapfac on the
-                                            !< staggered u grid
- integer, public                        :: map_proj
-                                           !< target grid map projection integer label
- character(50), public                  :: map_proj_char
-                                           !< target grid map projection character string
- integer, public                        :: i_target
-                                           !< i dimension of each global tile,
-                                           !! or of a nest, target grid.
- integer, public                        :: j_target
-                                           !< j dimension of each global tile,
-                                           !! or of a nest, target grid.
  integer, public                        :: ip1_target
                                            !< ip1_target plus 1
  integer, public                        :: jp1_target
@@ -122,11 +91,31 @@ real,allocatable,public                 :: mapfac_u(:,:)
                                            !< latitude of grid center, target grid
  type(esmf_field),  public              :: longitude_target_grid
                                            !< longitude of grid center, target grid
+  type(esmf_field),  public              :: latitude_u_target_grid
+                                           !< latitude of grid u stagger, target
+                                           !grid
+ type(esmf_field),  public              :: longitude_u_target_grid
+                                           !< longitude of grid u stagger, target
+                                           !grid
+  type(esmf_field),  public              :: latitude_v_target_grid
+                                           !< latitude of grid v stagger, target
+                                           !grid
+ type(esmf_field),  public              :: longitude_v_target_grid
+                                           !< longitude of grid v stagger, target
+                                           !grid
  real(esmf_kind_r8), allocatable , public :: zs_target_grid(:,:)
                                           !< soil center depth, target grid
  type(esmf_field), public               :: hgt_input_grid, hgt_target_grid
                                           !< surface elevation, target grid
-
+  type(esmf_field),  public              :: mapfac_m_target_grid
+                                          !< target grid map factor at grid
+                                          ! center 
+ type(esmf_field),  public              :: mapfac_u_target_grid
+                                          !< target grid map factor at u stagger
+                                          ! points
+  type(esmf_field),  public              :: mapfac_v_target_grid
+                                          !< target grid map factor at v stagger
+                                          ! points
  integer, public                       :: n_diag_fields
                                           !< number of fields read from the diag file
  type(esmf_fieldbundle), public        :: input_diag_bundle
@@ -288,7 +277,6 @@ real,allocatable,public                 :: mapfac_u(:,:)
  error=nf90_inquire_dimension(ncid,id_dim,len=nsoil_input)
  call netcdf_err(error, 'reading nSoilLevels')
 
-
  allocate(latCell(nCells))
  allocate(lonCell(nCells))
 
@@ -381,6 +369,7 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
 
  nVertThis = 0
  k = 0
+!!!!!$OMP DO DEFAULT(SHARED), PRIVATE(i,j,n,nVertThis,k,temp)
  do i = cell_start,cell_end
     j = i - cell_start + 1
     elemIDs(j) = i
@@ -420,11 +409,13 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
 
     enddo
  enddo
+!!!!!!!$OMP END DO
  allocate(nodeCoords(2*k), nodeIDs(k), elementConn(nVertThis))
  nodeCoords = nodeCoords_temp(1:k*2)
  nodeIDs = nodeIDs_temp(1:k)
  elementConn = elementConn_temp(1:nVertThis)
 
+ if (localpet==0) print*, "- CREATE MESH -"
  input_grid = ESMF_MeshCreate(parametricDim=2, &
                      spatialDim=2, &
                      nodeIDs= nodeIDs, &
@@ -513,11 +504,13 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  subroutine define_target_grid(localpet, npets)
  
  use program_setup, only : target_grid_type
- 
- if(trim(target_grid_type) == 'file')
+ implicit none
+
+ integer, intent(in) :: localpet, npets
+ if(trim(target_grid_type) == 'file') then
  	call define_target_grid_file(localpet,npets)
  else
- 	call define_target_grid_file(localpet,npets)
+ 	call define_target_grid_params(localpet,npets)
  endif
  
  end subroutine define_target_grid
@@ -534,12 +527,17 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
 
  integer                      :: error, extra, i, j, clb(2), cub(2)
 
-
- real(esmf_kind_r8), allocatable       :: latitude(:,:), longitude(:,:), &
-                                          dum2d(:,:),latitude_corner(:,:), &
-                                          longitude_corner(:,:)
+ real(esmf_kind_r8), allocatable       :: latitude_one(:,:), longitude_one(:,:), &
+                                          latitude_corner_one(:,:), &
+                                          longitude_corner_one(:,:), &
+                                          longitude_u_one(:,:), latitude_u_one(:,:), &
+                                          longitude_v_one(:,:), latitude_v_one(:,:), &
+                                          mapfac_m_one(:,:), mapfac_u_one(:,:), &
+                                          mapfac_v_one(:,:)
+                                          
  integer                               :: ncid,id_var, id_dim
- real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:)
+ real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:),& 
+                                                mapptr(:,:)
  type(esmf_polekind_flag)       	   :: polekindflag(2)
  
  ip1_target = i_target + 1
@@ -549,31 +547,31 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
  ! Fill proj object for target grid projection
  !----------------------------------------------------------------------
  call push_source_projection(proj_code, stand_lon, truelat1, truelat2, &
-							  dxkm, dykm, dykm, dxkm, known_x, known_y, &
-							  known_lat, known_lon)
+			  dxkm, dykm, dykm, dxkm, known_x, known_y, &
+			  known_lat, known_lon)
 							  
 !-----------------------------------------------------------------------
 ! Create ESMF grid object for the model grid.
 !-----------------------------------------------------------------------
 
- if (grid_type == 'll_global' ) then
+ if (trim(target_grid_type) == 'll_global' ) then
  	 polekindflag(1:2) = ESMF_POLEKIND_MONOPOLE
 	 print*,"- CALL GridCreate1PeriDim FOR INPUT GRID."
-	 input_grid = ESMF_GridCreate1PeriDim(minIndex=(/1,1/), &
-										maxIndex=(/i_target,j_target/), &
-										polekindflag=polekindflag, &
-										periodicDim=1, &
-										poleDim=2,  &
-										coordSys=ESMF_COORDSYS_SPH_DEG, &
-										regDecomp=(/1,npets/),  &
-										indexflag=ESMF_INDEX_GLOBAL, rc=rc)
-	 if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-	   call error_handler("IN GridCreate1PeriDim", rc)
+	 target_grid = ESMF_GridCreate1PeriDim(minIndex=(/1,1/), &
+			maxIndex=(/i_target,j_target/), &
+			polekindflag=polekindflag, &
+			periodicDim=1, &
+			poleDim=2,  &
+			coordSys=ESMF_COORDSYS_SPH_DEG, &
+			regDecomp=(/1,npets/),  &
+			indexflag=ESMF_INDEX_GLOBAL, rc=error)
+	 if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+	   call error_handler("IN GridCreate1PeriDim", error)
  else
 	 if (localpet==0) print*,"- CALL GridCreateNoPeriDim FOR TARGET MODEL GRID"
 	 target_grid = ESMF_GridCreateNoPeriDim(maxIndex=(/i_target,j_target/), &
-										   indexflag=ESMF_INDEX_GLOBAL, &
-										   rc=error)
+			   indexflag=ESMF_INDEX_GLOBAL, &
+			   rc=error)
 	 if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
 		call error_handler("IN GridCreateNoPeriDim", error)
  endif
@@ -609,17 +607,18 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
 
  !Grid centers
  call ESMF_GridGetCoord(target_grid, &
-                          staggerLoc=ESMF_STAGGERLOC_CENTER, &
-                          coordDim=2, &
-                          computationalLBound=clb, &
-                          computationalUBound=cub, &
-                          rc=error)  
+                        staggerLoc=ESMF_STAGGERLOC_CENTER, &
+                        coordDim=2, &
+                        computationalLBound=clb, &
+                        computationalUBound=cub, &
+                        farrayPtr=lat_src_ptr, &
+                        rc=error)  
                           
- allocate(latitude(clb(1):cub(1),clb(2):cub(2)))
- allocate(longitude(clb(1):cub(1),clb(2):cub(2))
- allocate(mapfac_m(clb(1):cub(1),clb(2):cub(2)))     			   
- call get_lat_lon_fields(latitude, longitude, clb(1),clb(2),cub(1),cub(2),M) 
- call get_map_factor(latitude, longitude, mapfac_m, mapfac_m, clb(1),clb(2),cub(1),cub(2))
+ allocate(latitude_one(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude_one(clb(1):cub(1),clb(2):cub(2)))
+ allocate(mapfac_m_one(clb(1):cub(1),clb(2):cub(2)))     			   
+ call get_lat_lon_fields(latitude_one, longitude_one, clb(1),clb(2),cub(1),cub(2),M) 
+ call get_map_factor(latitude_one, longitude_one, mapfac_m_one, mapfac_m_one, clb(1),clb(2),cub(1),cub(2))
  
  !y-dir stagger (V)
  
@@ -628,13 +627,14 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
                           coordDim=2, &
                           computationalLBound=clb, &
                           computationalUBound=cub, &
+                          farrayPtr=lat_src_ptr, &
                           rc=error)  
                           
- allocate(latitude_v(clb(1):cub(1),clb(2):cub(2)))
- allocate(longitude_v(clb(1):cub(1),clb(2):cub(2))  
- allocate(mapfac_v(clb(1):cub(1),clb(2):cub(2))) 
- call get_lat_lon_fields(latitude_v, longitude_v, clb(1),clb(2),cub(1),cub(2), V)
- call get_map_factor(latitude_v, longitude_v, mapfac_v, mapfac_v, clb(1),clb(2),cub(1),cub(2))
+ allocate(latitude_v_one(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude_v_one(clb(1):cub(1),clb(2):cub(2)))  
+ allocate(mapfac_v_one(clb(1):cub(1),clb(2):cub(2))) 
+ call get_lat_lon_fields(latitude_v_one, longitude_v_one, clb(1),clb(2),cub(1),cub(2), V)
+ call get_map_factor(latitude_v_one, longitude_v_one, mapfac_v_one, mapfac_v_one, clb(1),clb(2),cub(1),cub(2))
  
  
  !x-dir stagger (U)
@@ -644,13 +644,14 @@ nCellsPerPET = ceiling(real(nCells)/real(npets))
                           coordDim=2, &
                           computationalLBound=clb, &
                           computationalUBound=cub, &
+                          farrayPtr=lat_src_ptr, &
                           rc=error)  
                           
- allocate(latitude_u(clb(1):cub(1),clb(2):cub(2)))
- allocate(longitude_u(clb(1):cub(1),clb(2):cub(2))  
- allocate(mapfac_u(clb(1):cub(1),clb(2):cub(2))) 
- call get_lat_lon_fields(latitude_u, longitude_u, clb(1),clb(2),cub(1),cub(2), U)
- call get_map_factor(latitude_u, longitude_u, mapfac_u, mapfac_u, clb(1),clb(2),cub(1),cub(2))
+ allocate(latitude_u_one(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude_u_one(clb(1):cub(1),clb(2):cub(2)))
+ allocate(mapfac_u_one(clb(1):cub(1),clb(2):cub(2))) 
+ call get_lat_lon_fields(latitude_u_one, longitude_u_one, clb(1),clb(2),cub(1),cub(2), U)
+ call get_map_factor(latitude_u_one, longitude_u_one, mapfac_u_one, mapfac_u_one, clb(1),clb(2),cub(1),cub(2))
  
  !corner
 call ESMF_GridGetCoord(target_grid, &
@@ -658,11 +659,12 @@ call ESMF_GridGetCoord(target_grid, &
                           coordDim=2, &
                           computationalLBound=clb, &
                           computationalUBound=cub, &
+                          farrayPtr=lat_src_ptr, &
                           rc=error)
                           
- allocate(latitude_corner(clb(1):cub(1),clb(2):cub(2)))
- allocate(longitude_corner(clb(1):cub(1),clb(2):cub(2)) 
- call get_lat_lon_fields(latitude_corner, longitude_corner, clb(1),clb(2),cub(1),cub(2),CORNER)
+ allocate(latitude_corner_one(clb(1):cub(1),clb(2):cub(2)))
+ allocate(longitude_corner_one(clb(1):cub(1),clb(2):cub(2)))
+ call get_lat_lon_fields(latitude_corner_one, longitude_corner_one, clb(1),clb(2),cub(1),cub(2),CORNER)
  
 ! call get_lat_lon_fields(clat_array, clon_array, start_mem_i, &
 !					   start_mem_j, end_mem_i, end_mem_j, M, comp_ll=.true.)
@@ -671,7 +673,7 @@ call ESMF_GridGetCoord(target_grid, &
 !-----------------------------------------------------------------------
 ! Read the mask and lat/lons.
 !-----------------------------------------------------------------------
-
+! Grid Centers
  if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
  latitude_target_grid = ESMF_FieldCreate(target_grid, &
                                    typekind=ESMF_TYPEKIND_R8, &
@@ -681,14 +683,110 @@ call ESMF_GridGetCoord(target_grid, &
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
     call error_handler("IN FieldCreate", error)
 
+
  if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LONGITUDE."
  longitude_target_grid = ESMF_FieldCreate(target_grid, &
                                    typekind=ESMF_TYPEKIND_R8, &
                                    staggerloc=ESMF_STAGGERLOC_CENTER, &
                                    name="target_grid_longitude", &
                                    rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
     call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LATITUDE."
+ call ESMF_FieldGet(latitude_target_grid, farrayPtr=lat_src_ptr,rc=error)
+  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGET", error)
+
+ if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LONGITUDE."
+ call ESMF_FieldGet(latitude_target_grid, farrayPtr=lon_src_ptr, &
+                        computationalLBound=clb, computationalUBound=cub, &
+                        rc=error)
+  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGet", error)
+  print*, cub(1), cub(2)
+  do j = clb(2),cub(2)
+  do i = clb(1),cub(1)
+        lat_src_ptr(i,j) = latitude_one(i,j)
+        lon_src_ptr(i,j) = longitude_one(i,j)
+  enddo
+  enddo
+
+! E-W Stagger
+if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
+ latitude_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                   name="target_grid_latitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LONGITUDE."
+ longitude_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                   name="target_grid_longitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LATITUDE."
+ call ESMF_FieldGet(latitude_u_target_grid, farrayPtr=lat_src_ptr,rc=error)
+  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGET", error)
+
+ if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LONGITUDE."
+ call ESMF_FieldGet(latitude_u_target_grid, farrayPtr=lon_src_ptr, &
+                        computationalLBound=clb, computationalUBound=cub, &
+                        rc=error)
+  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGet", error)
+  do j = clb(2),cub(2)
+  do i = clb(1),cub(1)
+        lat_src_ptr(i,j) = latitude_u_one(i,j)
+        lon_src_ptr(i,j) = longitude_u_one(i,j)
+  enddo
+  enddo
+ 
+ ! N-S Stagger
+if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
+ latitude_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                   name="target_grid_latitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LONGITUDE."
+ longitude_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                   name="target_grid_longitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LATITUDE."
+ call ESMF_FieldGet(latitude_v_target_grid, farrayPtr=lat_src_ptr,rc=error)
+  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGET", error)
+
+ if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LONGITUDE."
+ call ESMF_FieldGet(latitude_v_target_grid, farrayPtr=lon_src_ptr, &
+                        computationalLBound=clb, computationalUBound=cub, &
+                        rc=error)
+  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGet", error)
+  do j = clb(2),cub(2)
+  do i = clb(1),cub(1)
+        lat_src_ptr(i,j) = latitude_v_one(i,j)
+        lon_src_ptr(i,j) = longitude_v_one(i,j)
+  enddo
+  enddo
 
  if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID HGT."
  hgt_target_grid = ESMF_FieldCreate(target_grid, &
@@ -699,21 +797,8 @@ call ESMF_GridGetCoord(target_grid, &
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
     call error_handler("IN FieldCreate", error)
 
- if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID LATITUDE. "
- call ESMF_FieldScatter(latitude_target_grid, real(latitude,esmf_kind_r8), rootpet=0, rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-   call error_handler("IN FieldScatter", error)
-
- if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID LONGITUDE."
- call ESMF_FieldScatter(longitude_target_grid, real(longitude,esmf_kind_r8), rootpet=0, rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-   call error_handler("IN FieldScatter", error)
-
-  if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID HGT."
- call ESMF_FieldScatter(hgt_target_grid, real(dum2d,esmf_kind_r8), rootpet=0, rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
-   call error_handler("IN FieldScatter", error)
-
+ 
+ !Create and fill coordinates
  if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
    nullify(lon_src_ptr)
    call ESMF_GridGetCoord(target_grid, &
@@ -736,21 +821,15 @@ call ESMF_GridGetCoord(target_grid, &
 
     do j = clb(2),cub(2)
       do i = clb(1), cub(1)
-        lon_src_ptr(i,j)=real(longitude(i,j),esmf_kind_r8)
-        lat_src_ptr(i,j)=real(latitude(i,j),esmf_kind_r8)
+        lon_src_ptr(i,j)=longitude_one(i,j)
+        lat_src_ptr(i,j)=latitude_one(i,j)
       enddo
     enddo
 
   nullify(lon_src_ptr)
   nullify(lat_src_ptr)
 
- if (localpet==0) print*,"- CALL GridAddCoord FOR TARGET GRID."
- call ESMF_GridAddCoord(target_grid, &
-                        staggerloc=ESMF_STAGGERLOC_CORNER, rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-    call error_handler("IN GridAddCoord", error)
-
- if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
+ if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID X-COORD."
 
  call ESMF_GridGetCoord(target_grid, &
                         staggerLoc=ESMF_STAGGERLOC_CORNER, &
@@ -759,7 +838,7 @@ call ESMF_GridGetCoord(target_grid, &
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
     call error_handler("IN GridGetCoord", error)
 
- if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID Y-COORD."
+ if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID Y-COORD."
 
  call ESMF_GridGetCoord(target_grid, &
                         staggerLoc=ESMF_STAGGERLOC_CORNER, &
@@ -772,9 +851,127 @@ call ESMF_GridGetCoord(target_grid, &
 
  do j = clb(2),cub(2)
       do i = clb(1), cub(1)
-          lon_src_ptr(i,j)=real(longitude_corner(i,j),esmf_kind_r8)
-          lat_src_ptr(i,j)=real(latitude_corner(i,j),esmf_kind_r8)
+          lon_src_ptr(i,j)=longitude_corner_one(i,j)
+          lat_src_ptr(i,j)=latitude_corner_one(i,j)
       enddo
+ enddo
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE1 X-COORD."
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_EDGE1, &
+                        coordDim=1, &
+                        farrayPtr=lon_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+    call error_handler("IN GridGetCoord", error)
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE1 Y-COORD."
+
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_EDGE1, &
+                        coordDim=2, &
+                        computationalLBound=clb, &
+                        computationalUBound=cub, &
+                        farrayPtr=lat_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+    call error_handler("IN GridGetCoord", error)
+
+ do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+          lon_src_ptr(i,j)=longitude_u_one(i,j)
+          lat_src_ptr(i,j)=latitude_u_one(i,j)
+      enddo
+ enddo
+
+if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE2 X-COORD."
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_EDGE2, &
+                        coordDim=1, &
+                        farrayPtr=lon_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+    call error_handler("IN GridGetCoord", error)
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE2 Y-COORD."
+
+ call ESMF_GridGetCoord(target_grid, &
+                        staggerLoc=ESMF_STAGGERLOC_EDGE2, &
+                        coordDim=2, &
+                        computationalLBound=clb, &
+                        computationalUBound=cub, &
+                        farrayPtr=lat_src_ptr, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+    call error_handler("IN GridGetCoord", error)
+
+ do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+          lon_src_ptr(i,j)=longitude_v_one(i,j)
+          lat_src_ptr(i,j)=latitude_v_one(i,j)
+      enddo
+ enddo
+
+if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
+ mapfac_m_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldGet FOR TARGET GRID mapfac_m. "
+ call ESMF_FieldGet(mapfac_m_target_grid, farrayPtr=mapptr, &
+                    computationalLBound=clb,computationalUBound=cub, &
+                    rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+   call error_handler("IN FieldGet", error)
+
+ do j=clb(2),cub(2)
+ do i=clb(1),cub(1)
+        mapptr(i,j) = mapfac_m_one(i,j)
+ enddo
+ enddo
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_u."
+ mapfac_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldGet FOR TARGET GRID mapfac_u. "
+ call ESMF_FieldGet(mapfac_u_target_grid, farrayPtr=mapptr, &
+                    computationalLBound=clb,computationalUBound=cub, &
+                     rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+   call error_handler("IN FieldGet", error)
+
+ do j=clb(2),cub(2)
+ do i=clb(1),cub(1)
+        mapptr(i,j) = mapfac_u_one(i,j)
+ enddo
+ enddo
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_v."
+ mapfac_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldGet FOR TARGET GRID mapfac_v. "
+ call ESMF_FieldGet(mapfac_v_target_grid, farrayPtr=mapptr, &
+                    computationalLBound=clb,computationalUBound=cub, &
+                    rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+   call error_handler("IN FieldGet", error)
+
+ do j=clb(2),cub(2)
+ do i=clb(1),cub(1)
+        mapptr(i,j) = mapfac_v_one(i,j)
+ enddo
  enddo
  
  ! Define some extra projection-related values 
@@ -782,10 +979,17 @@ call ESMF_GridGetCoord(target_grid, &
 
  nullify(lon_src_ptr)
  nullify(lat_src_ptr)
- deallocate(longitude)
- deallocate(latitude)
- deallocate(longitude_corner)
- deallocate(latitude_corner)
+ deallocate(longitude_one)
+ deallocate(latitude_one)
+ deallocate(longitude_corner_one)
+ deallocate(latitude_corner_one)
+ deallocate(latitude_u_one)
+ deallocate(longitude_u_one)
+ deallocate(latitude_v_one)
+ deallocate(longitude_v_one)
+ deallocate(mapfac_m_one)
+ deallocate(mapfac_u_one)
+ deallocate(mapfac_v_one)
  
  end subroutine define_target_grid_params
  
@@ -804,7 +1008,10 @@ call ESMF_GridGetCoord(target_grid, &
 
 
  real(esmf_kind_r8), allocatable       :: latitude(:,:), longitude(:,:), &
-                                          dum2d(:,:)
+                                          dum2d(:,:),mapfac_u(:,:), &
+                                          mapfac_v(:,:), mapfac_m(:,:), &
+                                          latitude_u(:,:), longitude_u(:,:), &
+                                          latitude_v(:,:), longitude_v(:,:)
  integer                               :: ncid,id_var, id_dim
  real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:)
 
@@ -840,9 +1047,9 @@ call ESMF_GridGetCoord(target_grid, &
  allocate(latitude_v(i_target,jp1_target))
  allocate(longitude_v(i_target,jp1_target))
  allocate(dum2d(i_target,j_target))
- allocate(MAPFAC_M(i_target,j_target))
- allocate(MAPFAC_U(ip1_target,j_target))
- allocate(MAPFAC_V(i_target,jp1_target))
+ allocate(mapfac_m(i_target,j_target))
+ allocate(mapfac_u(ip1_target,j_target))
+ allocate(mapfac_v(i_target,jp1_target))
 
  if (localpet==0) print*,'- READ LONGITUDE ID'
  error=nf90_inq_varid(ncid, 'XLONG', id_var)
@@ -904,7 +1111,7 @@ call ESMF_GridGetCoord(target_grid, &
  call netcdf_err(error, 'reading MAPFAC_M id')
 
  if (localpet==0) print*,'- READ MAPFAC_M'
- error=nf90_get_var(ncid, id_var, MAPFAC_M)
+ error=nf90_get_var(ncid, id_var, mapfac_m)
  call netcdf_err(error, 'reading MAPFAC_M')
 
  if (localpet==0) print*,'- READ MAPFAC_U ID'
@@ -912,7 +1119,7 @@ call ESMF_GridGetCoord(target_grid, &
  call netcdf_err(error, 'reading MAPFAC_U id')
 
  if (localpet==0) print*,'- READ MAPFAC_U'
- error=nf90_get_var(ncid, id_var, MAPFAC_U)
+ error=nf90_get_var(ncid, id_var, mapfac_u)
  call netcdf_err(error, 'reading MAPFAC_U')
 
  if (localpet==0) print*,'- READ MAPFAC_V ID'
@@ -920,7 +1127,7 @@ call ESMF_GridGetCoord(target_grid, &
  call netcdf_err(error, 'reading MAPFAC_V id')
 
  if (localpet==0) print*,'- READ MAPFAC_V'
- error=nf90_get_var(ncid, id_var, MAPFAC_V)
+ error=nf90_get_var(ncid, id_var, mapfac_v)
  call netcdf_err(error, 'reading MAPFAC_V')
 
   if (localpet==0) print*,'- READ HGT ID'
@@ -968,12 +1175,12 @@ call ESMF_GridGetCoord(target_grid, &
  error = nf90_get_att(ncid, NF90_GLOBAL, 'POLE_LON', pole_lon)
  call netcdf_err(error, 'GETTING POLE_LON GLOBAL ATTRIBUTE')
 
- error = nf90_get_att(ncid, NF90_GLOBAL, 'MAP_PROJ', map_proj)
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'MAP_PROJ', proj_code)
  call netcdf_err(error, 'GETTING MAP_PROJ GLOBAL ATTRIBUTE')
 
  error = nf90_get_att(ncid, NF90_GLOBAL, 'MAP_PROJ_CHAR', map_proj_char)
  if (error .ne. 0) then
-   if (map_proj == 1) then
+   if (proj_code == 1) then
      map_proj_char = "Lambert Conformal"
    else
      map_proj_char = "Lat/Lon"
@@ -1104,10 +1311,132 @@ call ESMF_GridGetCoord(target_grid, &
 
  call get_cell_corners(latitude, longitude, lat_src_ptr, lon_src_ptr, dx, clb, cub)
 
+  nullify(lon_src_ptr)
+  nullify(lat_src_ptr)
+
+  if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_EDGE1, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN GridAddCoord", error)
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
+   nullify(lon_src_ptr)
+   call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_EDGE1, &
+                          coordDim=1, &
+                          farrayPtr=lon_src_ptr, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN GridGetCoord", error)
+
+   if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID Y-COORD."
+   nullify(lat_src_ptr)
+   call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_EDGE1, &
+                          coordDim=2, &
+                          computationalLBound=clb, &
+                          computationalUBound=cub, &
+                          farrayPtr=lat_src_ptr, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN GridGetCoord", error)
+
+    do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+        lon_src_ptr(i,j)=real(longitude_u(i,j),esmf_kind_r8)
+        lat_src_ptr(i,j)=real(latitude_u(i,j),esmf_kind_r8)
+      enddo
+    enddo
+
  nullify(lon_src_ptr)
  nullify(lat_src_ptr)
+
+   if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID."
+ call ESMF_GridAddCoord(target_grid, &
+                        staggerloc=ESMF_STAGGERLOC_EDGE2, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN GridAddCoord", error)
+
+ if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
+   nullify(lon_src_ptr)
+   call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_EDGE2, &
+                          coordDim=1, &
+                          farrayPtr=lon_src_ptr, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN GridGetCoord", error)
+
+   if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID Y-COORD."
+   nullify(lat_src_ptr)
+   call ESMF_GridGetCoord(target_grid, &
+                          staggerLoc=ESMF_STAGGERLOC_EDGE2, &
+                          coordDim=2, &
+                          computationalLBound=clb, &
+                          computationalUBound=cub, &
+                          farrayPtr=lat_src_ptr, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN GridGetCoord", error)
+
+    do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+        lon_src_ptr(i,j)=real(longitude_v(i,j),esmf_kind_r8)
+        lat_src_ptr(i,j)=real(latitude_v(i,j),esmf_kind_r8)
+      enddo
+    enddo
+
+ nullify(lon_src_ptr)
+ nullify(lat_src_ptr)
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
+ mapfac_m_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID LATITUDE. "
+ call ESMF_FieldScatter(mapfac_m_target_grid, real(mapfac_m,esmf_kind_r8),rootpet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+   call error_handler("IN FieldScatter", error)
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_u."
+ mapfac_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID mapfac_u. "
+ call ESMF_FieldScatter(mapfac_u_target_grid, real(mapfac_u,esmf_kind_r8),rootpet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+   call error_handler("IN FieldScatter", error)
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_v."
+ mapfac_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                   name="target_grid_hgt", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldScatter FOR TARGET GRID mapfac_v. "
+ call ESMF_FieldScatter(mapfac_v_target_grid,real(mapfac_v,esmf_kind_r8),rootpet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+   call error_handler("IN FieldScatter", error)
+
  deallocate(longitude)
  deallocate(latitude)
+ deallocate(latitude_u)
+ deallocate(longitude_u)
+ deallocate(latitude_v)
+ deallocate(longitude_v)
+ deallocate(mapfac_m)
+ deallocate(mapfac_u)
+ deallocate(mapfac_v)
  deallocate(dum2d)
 
  end subroutine define_target_grid_file
@@ -1216,6 +1545,12 @@ call ESMF_GridGetCoord(target_grid, &
 
  call ESMF_FieldDestroy(latitude_target_grid, rc=rc)
  call ESMF_FieldDestroy(longitude_target_grid, rc=rc)
+
+ call ESMF_FieldDestroy(latitude_u_target_grid, rc=rc)
+ call ESMF_FieldDestroy(longitude_u_target_grid, rc=rc)
+
+ call ESMF_FieldDestroy(latitude_v_target_grid, rc=rc)
+ call ESMF_FieldDestroy(longitude_v_target_grid, rc=rc)
 
  if (interp_diag) then
     allocate(fields(n_diag_fields))
@@ -1374,6 +1709,47 @@ subroutine unique_sort(val,nvals, final)
     allocate(final(i), source=unique(1:i))   !<-- Or, just use unique(1:i)
 end subroutine unique_sort
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Name: get_lat_lon_fields
+   !
+   ! Purpose: To calculate the latitude and longitude for every gridpoint in the
+   !   tile of the model domain. The caller may specify that the grid for which 
+   !   values are computed is staggered or unstaggered using the "stagger" 
+   !   argument.
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   subroutine get_lat_lon_fields(xlat_arr, xlon_arr, start_mem_i, &
+                                 start_mem_j, end_mem_i, end_mem_j, stagger, comp_ll, &
+                                 sub_x, sub_y)
+   
+      use llxy_module
+    
+      implicit none
+    
+      ! Arguments
+      integer, intent(in) :: start_mem_i, start_mem_j, end_mem_i, &
+                             end_mem_j, stagger
+      real, dimension(start_mem_i:end_mem_i, start_mem_j:end_mem_j), intent(out) :: xlat_arr, xlon_arr
+      logical, optional, intent(in) :: comp_ll
+      integer, optional, intent(in) :: sub_x, sub_y
+
+      ! Local variables
+      integer :: i, j
+      real :: rx, ry
+    
+      rx = 1.0
+      ry = 1.0
+      if (present(sub_x)) rx = real(sub_x)
+      if (present(sub_y)) ry = real(sub_y)
+
+      do i=start_mem_i, end_mem_i
+         do j=start_mem_j, end_mem_j
+            call xytoll(real(i-0.5)/rx+0.5, real(j-0.5)/ry+0.5, &
+                        xlat_arr(i,j), xlon_arr(i,j), stagger, comp_ll=comp_ll)
+         end do
+      end do
+
+   end subroutine get_lat_lon_fields
+
  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Name: get_map_factor
    !
@@ -1385,11 +1761,6 @@ end subroutine unique_sort
    subroutine get_map_factor(xlat_arr, xlon_arr, mapfac_arr_x, mapfac_arr_y, &
                              start_mem_i, start_mem_j, end_mem_i, end_mem_j)
    
-      use constants_module
-      use program_setup
-      use misc_definitions_module
-      use map_utils_mod
-    
       implicit none
     
       ! Arguments
@@ -1408,7 +1779,7 @@ end subroutine unique_sort
       !
     
       ! Lambert conformal projection
-      if (iproj_type == PROJ_LC) then
+      if (proj_code == PROJ_LC) then
          if (truelat1 /= truelat2) then
             colat1 = rad_per_deg*(90.0 - truelat1)
             colat2 = rad_per_deg*(90.0 - truelat2)
@@ -1437,7 +1808,7 @@ end subroutine unique_sort
          end if
     
       ! Polar stereographic projection
-      else if (iproj_type == PROJ_PS) then
+      else if (proj_code == PROJ_PS) then
     
          do i=start_mem_i, end_mem_i
             do j=start_mem_j, end_mem_j
@@ -1447,7 +1818,7 @@ end subroutine unique_sort
          end do
     
       ! Mercator projection 
-      else if (iproj_type == PROJ_MERC) then
+      else if (proj_code == PROJ_MERC) then
          colat0 = rad_per_deg*(90.0 - truelat1)
      
          do i=start_mem_i, end_mem_i
@@ -1459,7 +1830,7 @@ end subroutine unique_sort
          end do
     
       ! Global cylindrical projection
-      else if (iproj_type == PROJ_CYL) then
+      else if (proj_code == PROJ_CYL) then
      
          do i=start_mem_i, end_mem_i
             do j=start_mem_j, end_mem_j
@@ -1476,7 +1847,7 @@ end subroutine unique_sort
          end do
     
       ! Rotated global cylindrical projection
-      else if (iproj_type == PROJ_CASSINI) then
+      else if (proj_code == PROJ_CASSINI) then
      
          if (abs(pole_lat) == 90.) then
             do i=start_mem_i, end_mem_i
@@ -1512,7 +1883,7 @@ end subroutine unique_sort
             end do
          end if
     
-      else if (iproj_type == PROJ_ROTLL) then
+      else if (proj_code == PROJ_ROTLL) then
     
          do i=start_mem_i, end_mem_i
             do j=start_mem_j, end_mem_j

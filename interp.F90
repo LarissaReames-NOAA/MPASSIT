@@ -12,16 +12,17 @@
 
  use esmf
  use netcdf
+ use utils_mod
 
  use program_setup, only          : hist_file_input_grid, &
                                     diag_file_input_grid, &
                                     grid_file_input_grid, &
-                                    interp_diag, interp_hist
+                                    interp_diag, interp_hist, &
+                                    i_target, j_target
 
  use model_grid, only             : input_grid, target_grid, &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
-                                    i_target, j_target, &
                                     nsoil_input, &
                                     cell_latitude_input_grid, &
                                     cell_longitude_input_grid, &

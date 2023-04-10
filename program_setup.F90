@@ -11,6 +11,7 @@
  use ESMF_LogPublicMod
  use constants_module
  use utils_mod
+ use misc_definitions_module
 
  implicit none
 
@@ -57,9 +58,11 @@
  real, public					 :: known_lon   	      !< Longitude of reference point
  real, public					 :: known_x				  !< Grid-relative e-w index of reference point
  real, public					 :: known_y		  		  !< Grid-relative n-s index of reference point	
- real, public					 :: proj_code			  !< Integer code corresponding to the requested
- 														  ! target grid projection type
-  
+ integer, public				 :: proj_code			  !< Integer code corresponding to the requested
+ 										  ! target grid projection type
+ character(len=500), public                      :: map_proj_char       !< Map projection name
+ real, public                                    :: pole_lat            !< Latitude of pole for target grid projection
+ real, public                                    :: pole_lon            !< Longitude of pole for target grid projection
  public :: read_setup_namelist
 
  contains
@@ -81,8 +84,8 @@
  integer                     :: is, ie, ierr
  
  !Namelist variables that are used to create global variables
- real						:: dx,dy
-
+ real			:: dx,dy
+ integer                ::nx,ny
 
  namelist /config/ grid_file_input_grid, diag_file_input_grid, hist_file_input_grid, &
             file_target_grid, output_file, interp_diag, interp_hist, &
@@ -94,9 +97,11 @@
   ref_lat = NAN
   ref_lon = NAN
   dx = NAN
-  dy = NAN 
+  dy = NAN
   pole_lat = 90.0
-  pole_lon = 0.0                   
+  pole_lon = 0.0
+  nx = 0
+  ny = 0                   
 
  !print*,"- READ SETUP NAMELIST"
 
@@ -124,6 +129,7 @@
    LogType = ESMF_LOGKIND_NONE
  endif 
  
+ if (trim(target_grid_type) .ne. 'file') then
  dxkm = dx
  dykm = dy
  
@@ -131,24 +137,27 @@
  known_lon = ref_lon
  known_x = ref_x
  known_y = ref_y
+ i_target = nx
+ j_target = ny
  
  if (trim(target_grid_type)=='ll' .or. trim(target_grid_type)=='ll_global') then
-
+        proj_code=PROJ_LATLON
+        map_proj_char = 'Lat/Lon'
 	 ! If no dx,dy specified, assume global grid
 	 if (dx == NAN .and. dy == NAN) then
 	    if (trim(target_grid_type) .ne. 'll_global') then
 	    	call error_handler("For lat-lon projection, if dx/dy are not specified "// &
 	    	"a global grid is assumed. Please set dx/dy or change target_grid_type to "// &
-	    	"'ll_global'", ERROR)
+	    	"'ll_global'", ERROR_CODE)
 	    endif
-		dlondeg = 360. / (nx)   ! Here, we really do not want e_we-s_we+1
-		dlatdeg = 180. / (ny)   ! Here, we really do not want e_we-s_we+1
-		known_x = 1.
-		known_y = 1.
-		known_lon = stand_lon + dlondeg/2.
-		known_lat = -90. + dlatdeg/2.
-		dxkm = EARTH_RADIUS_M * PI * 2.0 / (e_we(1)-s_we(1))
-		dykm = EARTH_RADIUS_M * PI       / (e_sn(1)-s_sn(1))
+            dlondeg = 360. / (nx)   ! Here, we really do not want e_we-s_we+1
+	    dlatdeg = 180. / (ny)   ! Here, we really do not want e_we-s_we+1
+	    known_x = 1.
+	    known_y = 1.
+	    known_lon = stand_lon + dlondeg/2.
+	    known_lat = -90. + dlatdeg/2.
+	    dxkm = EARTH_RADIUS_M * PI * 2.0 / (i_target)
+	    dykm = EARTH_RADIUS_M * PI       / (j_target)
 
 	 ! If dx,dy specified, however, assume regional grid
 	 else
@@ -158,24 +167,28 @@
 		dykm = dlatdeg * EARTH_RADIUS_M * PI * 2.0 / 360.0
 		if (known_lat == NAN .or. known_lon == NAN) then
 		   call error_handler('For lat-lon projection, if dx/dy are specified, '// &
-					'a regional domain is assumed, and a ref_lat,ref_lon must also be specified',ERROR)
+					'a regional domain is assumed, and a ref_lat,ref_lon must also be specified',ERROR_CODE)
 		end if
 	 end if
  end if
  
  ! Manually set truelat2 = truelat1 if truelat2 not specified for Lambert
   if (trim(target_grid_type) == 'lcc' .and. truelat2 == NAN) then
-	 if (truelat1 == NAN) call error_handler("No TRUELAT1 specified for Lambert conformal projection.",ERROR)) 
+	 if (truelat1 == NAN) call error_handler("No TRUELAT1 specified for Lambert conformal projection.",ERROR_CODE) 
 	 truelat2 = truelat1
-  end if
+  elseif (trim(target_grid_type) == 'lcc') then
+        proj_code=PROJ_LC
+        map_proj_char = 'Lambert Conformal'
+  endif
   
   ! If the user hasn't supplied a known_x and known_y, assume the center of domain 1
   if (known_x == NAN .and. known_y == NAN) then
-	known_x = ixdim(1) / 2.
-	known_y = jydim(1) / 2.
+	known_x = i_target / 2.
+	known_y = j_target / 2.
   else if (known_x == NAN .or. known_y == NAN) then
-	call error_handler('In namelist, neither or both of ref_x, ref_y must be specified.',ERROR)
+	call error_handler('In namelist, neither or both of ref_x, ref_y must be specified.',ERROR_CODE)
   end if 
+ endif
 
  return
  

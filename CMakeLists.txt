@@ -68,6 +68,10 @@ set(lib_src
     interp.F90
     write_data.F90
     datetime_module.F90
+    constants_module.F90
+    llxy_module.F90
+    misc_definitions_module.F90
+    module_map_utils.F90
 )
 
 set(exe_src mpassit.F90)
