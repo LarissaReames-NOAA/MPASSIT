@@ -192,12 +192,12 @@
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
             call error_handler("IN FieldBundleRegridStore", rc)
     !endif
-     endif
      
-     if (localpet==0) print*,"- PATCH REGRID INIT FIELDS "                                
-     call ESMF_FieldBundleRegrid(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, rh_patch, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-        call error_handler("IN FieldBundleRegrid", rc)
+       if (localpet==0) print*,"- PATCH REGRID INIT FIELDS "                                
+       call ESMF_FieldBundleRegrid(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, rh_patch, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldBundleRegrid", rc)
+     endif
 
      if (localpet==0) print*,"- CREATE HGT PATCH REGRID ROUTEHANDLE"
 
