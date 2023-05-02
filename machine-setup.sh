@@ -126,8 +126,9 @@ elif [[ -d /lustre && -d /ncrc ]] ; then
 elif [[ "$(hostname)" =~ "Orion" ]]; then
     target="orion"
     module purge
-elif [[ "$(hostname)" =~ "odin" ]]; then
-    target="odin"
+elif [[ "$(hostname)" =~ "ln" ]]; then
+    source /scratch/ywang/tools/lmod/lmod/init/bash
+    target="vecna"
 elif [[ -d /work/00315 && -d /scratch/00315 ]] ; then
     target=stampede
     module purge
