@@ -1,25 +1,24 @@
 #! /usr/bin/env bash
 #
-# Author: Larissa Reames CIWRO/NOAA/NSSL/FRDD  
+# Author: Larissa Reames CIWRO/NOAA/NSSL/FRDD
 
 set -eux
 
-target=${target:-"NULL"}
+target=${1:-"NULL"}
 compiler=${compiler:-"intel"}
-echo $target 
-echo $compiler
+echo $target, $compiler
 if [[ "$target" == "linux.*" || "$target" == "macosx.*" ]]; then
- unset -f module
- set +x
- source ./modulefiles/build.$target > /dev/null
- set -x
+    unset -f module
+    set +x
+    source ./modulefiles/build.$target > /dev/null
+    set -x
 else
- set +x
- source ./machine-setup.sh
- module use ./modulefiles
- module load build.$target.$compiler.lua > /dev/null
- module list
- set -x
+    set +x
+    source ./machine-setup.sh
+    module use ./modulefiles
+    module load build.$target.$compiler.lua
+    module list
+    set -x
 fi
 
 if [[ "$target" == "hera" || "$target" == "orion" || "$target" == "wcoss2" ]]; then
