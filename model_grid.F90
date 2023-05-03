@@ -208,12 +208,12 @@
  integer, intent(in)          :: localpet, npets
 
  integer                      :: error, i, j, k, rc, n, lmi(1), lma(1)
- integer                      :: omode
- integer					  :: NX, NY, format
+ integer                      :: NX, NY, format
 
  integer                               :: ncid,id_var, id_dim, dimsize, nVertThis
  integer                               :: nCells, nVertices, maxEdges, dimids(2)
- integer(esmf_kind_i8)                 :: cell_start, cell_end, temp(1)
+ integer                               :: cell_start, cell_end, dims(3), temp1, &
+                                          temp2, temp3, temp(1), clb(1), cub(1)
  integer, allocatable                  :: elemTypes2(:), vertOnCell(:,:), &
                                           nodesPET(:), nodeIDs_temp(:), &
                                           elementConn_temp(:), elementConn(:)
@@ -228,31 +228,26 @@
 
  the_file = grid_file_input_grid
 
- ! indicate to use PnetCDF or HDF5 to carry out parallel I/O
- ! Note using NF_MPIIO is no longer required, as it has been
- ! deprecated since NetCDF 4.6.2.
- omode = IOR(omode, NF_MPIIO)
-
  if (localpet==0) print*,'- OPEN MPAS INPUT FILE: ',trim(the_file)
- error=nf_open_par(trim(the_file),omode,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+ error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
  if (error /=0) call error_handler("OPENING MPAS INPUT FILE",error)
 
  !Get nCells size
  if (localpet==0) print*,'- READ nCells'
- error = nf_inq_dimid(ncid,'nCells', id_dim)
+ error = nf90_inq_dimid(ncid,'nCells', id_dim)
  call netcdf_err(error, 'reading nCells id')
 
- error=nf_inq_dimlen(ncid,id_dim,nCells)
+ error=nf90_inquire_dimension(ncid,id_dim,len=nCells)
  call netcdf_err(error, 'reading nCells')
 
  nCells_input = nCells
 
  !Get nVertices size
   if (localpet==0) print*,'- READ nVertices'
- error = nf_inq_dimid(ncid,'nVertices',id_dim)
+ error = nf90_inq_dimid(ncid,'nVertices',id_dim)
  call netcdf_err(error, 'reading nVertices id')
 
- error=nf_inq_dimlen(ncid,id_dim,nVertices)
+ error=nf90_inquire_dimension(ncid,id_dim,len=nVertices)
  call netcdf_err(error, 'reading nVertices')
 
  nVert_input = nVertices
@@ -264,49 +259,35 @@
 
  !Get nVertLevels size
  if (localpet==0) print*,'- READ nVertLevels'
- error = nf_inq_dimid(ncid,'nVertLevels',id_dim)
+ error = nf90_inq_dimid(ncid,'nVertLevels',id_dim)
  call netcdf_err(error, 'reading nVertLevels id')
 
- error=nf_inq_dimlen(ncid,id_dim,nz_input)
+ error=nf90_inquire_dimension(ncid,id_dim,len=nz_input)
  call netcdf_err(error, 'reading nVertLevels')
 
  !Get nVertLevelsP1 size
   if (localpet==0) print*,'- READ nVertLevelsP1'
- error = nf_inq_dimid(ncid,'nVertLevelsP1',id_dim)
+ error = nf90_inq_dimid(ncid,'nVertLevelsP1',id_dim)
  call netcdf_err(error, 'reading nVertLevelsP1 id')
 
- error=nf_inq_dimlen(ncid,id_dim,nzp1_input)
+ error=nf90_inquire_dimension(ncid,id_dim,len=nzp1_input)
  call netcdf_err(error, 'reading nVertLevelsP1')
 
  !Get maxEdges size
   if (localpet==0) print*,'- READ maxEdges'
- error = nf_inq_dimid(ncid,'maxEdges',id_dim)
+ error = nf90_inq_dimid(ncid,'maxEdges',id_dim)
  call netcdf_err(error, 'reading maxEdges id')
 
- error=nf_inq_dimlen(ncid,id_dim,maxEdges)
+ error=nf90_inquire_dimension(ncid,id_dim,len=maxEdges)
  call netcdf_err(error, 'reading maxEdges')
 
  !Get nSoilLevels size
   if (localpet==0) print*,'- READ nSoilLevels'
- error = nf_inq_dimid(ncid,'nSoilLevels',id_dim)
+ error = nf90_inq_dimid(ncid,'nSoilLevels',id_dim)
  call netcdf_err(error, 'reading nSoilLevels id')
 
- error=nf_inq_dimlen(ncid,id_dim,nsoil_input)
+ error=nf90_inquire_dimension(ncid,id_dim,len=nsoil_input)
  call netcdf_err(error, 'reading nSoilLevels')
- 
-  ! check file format
-  err = nf_inq_format(ncid, format)
-  call check(err, 'In nf_inq_format: ')
-  
-! set to use MPI/PnetCDF collective I/O
- if (format .EQ. NF_FORMAT_NETCDF4 .OR. &
-	 format .EQ. NF_FORMAT_NETCDF4_CLASSIC) then
-	  err = nf_var_par_access(ncid, varid, NF_COLLECTIVE)
-	  call check(err, 'In nf_var_par_access: ')
- else
-	  err = nf_var_par_access(ncid, NF_GLOBAL, NF_COLLECTIVE)
-	  call check(err, 'In nf_var_par_access: ')
- endif
  
  allocate(latCell(cell_start:cell_end))
  allocate(lonCell(cell_start:cell_end))
@@ -319,56 +300,53 @@
  allocate(vertOnCell(maxEdges,cell_start:cell_end))
  allocate(zs_target_grid(nsoil_input,1))
 
- allocate(dummy(nVertsPerPET))
-
- 
  ! GET CELL CENTER LAT/LON
  if (localpet==0) print*,'- READ LONCELL ID'
- error=nf_inq_varid(ncid, 'lonCell', id_var)
+ error=nf90_inq_varid(ncid, 'lonCell', id_var)
  call netcdf_err(error, 'reading lonCell id')
 
  if (localpet==0) print*,'- READ LONCELL'
- error=nf_get_vara(ncid, id_var, cell_start, nCellsPertPET,lonCell)
+ error=nf90_get_var(ncid, id_var, start=(/cell_start/), count=(/nCellsPerPET/),values=lonCell)
  call netcdf_err(error, 'reading lonCell')
 
  if (localpet==0) print*,'- READ LATCELL ID'
- error=nf_inq_varid(ncid, 'latCell', id_var)
+ error=nf90_inq_varid(ncid, 'latCell', id_var)
  call netcdf_err(error, 'reading latCell id')
 
  if (localpet==0) print*,'- READ LATCELL'
-  error=nf_get_vara(ncid, id_var, cell_start, nCellsPertPET,latCell)
+  error=nf90_get_var(ncid, id_var, start=(/cell_start/), count=(/nCellsPerPET/),values=latCell)
  call netcdf_err(error, 'reading latCell')
 
  ! GET VERTEX LAT/LON
  if (localpet==0) print*,'- READ LONVERTEX ID'
- error=nf_inq_varid(ncid, 'lonVertex', id_var)
+ error=nf90_inq_varid(ncid, 'lonVertex', id_var)
  call netcdf_err(error, 'reading lonVertex id')
 
  if (localpet==0) print*,'- READ LONVERTEX'
- error=nf_get_vara(ncid, id_var, 1,nVertices,lonVert)
+ error=nf90_get_var(ncid, id_var, start=(/1/),count=(/nVertices/),values=lonVert)
  call netcdf_err(error, 'reading lonVertex')
  
  if (localpet==0) print*,'- READ LATVERTEX ID'
- error=nf_inq_varid(ncid, 'latVertex', id_var)
+ error=nf90_inq_varid(ncid, 'latVertex', id_var)
  call netcdf_err(error, 'reading latVertex id')
 
  if (localpet==0) print*,'- READ LATVERTEX'
- error=nf_get_vara(ncid, id_var,  1,nVertices,latVert)
+ error=nf90_get_var(ncid, id_var,  start=(/1/),count=(/nVertices/),values=latVert)
  call netcdf_err(error, 'reading latVertex')
 
   ! SOIL CENTER DEPTHS
  if (localpet==0) print*,'- READ ZS ID'
- error=nf_inq_varid(ncid, 'zs', id_var)
+ error=nf90_inq_varid(ncid, 'zs', id_var)
  call netcdf_err(error, 'reading zs id')
 
  if (localpet==0) print*,'- READ ZS'
- error=nf_get_var(ncid, id_var, (/1,1/),(/nsoil_input,1/),zs_target_grid)
+ error=nf90_get_var(ncid, id_var, start=(/1,1/),count=(/nsoil_input,1/),values=zs_target_grid)
  call netcdf_err(error, 'reading ZS')
 
  if (localpet==0) print*,'- READ HGT'
- error=nf_inq_varid(ncid, 'ter', id_var)
+ error=nf90_inq_varid(ncid, 'ter', id_var)
  call netcdf_err(error, 'reading ter id')
- error=nf_get_vara(ncid, id_var, cell_start,nCellsPerPET, hgt)
+ error=nf90_get_var(ncid, id_var, start=(/cell_start/),count=(/nCellsPerPET/), values=hgt)
  call netcdf_err(error, 'reading ter')
 
  if (localpet==0) print*,"- NUMBER OF CELLS ON INPUT GRID ", nCells_input
@@ -379,11 +357,14 @@
 !-----------------------------------------------------------------------
 
  if (localpet==0) print*,'- READ verticesOnCell ID'
- error=nf_inq_varid(ncid, 'verticesOnCell', id_var)
+ error=nf90_inq_varid(ncid, 'verticesOnCell', id_var)
  call netcdf_err(error, 'reading verticesOnCell id')
 
+ error = nf90_inquire_variable(ncid,id_var,dimids=dims)
+ call netcdf_err(error, 'reading verticesOnCell dims')
+
  if (localpet==0) print*,'- READ verticesOnCell'
- error=nf_get_vara(ncid, id_var, (/1,cell_start/),(/maxEdges,cell_end/),vertOnCell)
+ error=nf90_get_var(ncid, id_var, start=(/1,cell_start/),count=(/maxEdges,nCellsPerPET/),values=vertOnCell)
  call netcdf_err(error, 'reading verticesOnCell')
 
  error = nf90_close(ncid)
@@ -399,6 +380,7 @@
  nVertThis = 0
  k = 0
 
+ if (localpet==0) print*, "- Create PET-local element connectivity "
  do i = cell_start,cell_end
     j = i - cell_start + 1
     elemIDs(j) = i
@@ -429,7 +411,6 @@
 
             elemTypes2(j) = elemTypes2(j) + 1
 
-            !This will have duplicates by defhistion
             temp = FINDLOC(nodeIDS_temp, vertOnCell(n,i))
             elementConn_temp(nVertThis) = temp(1)
 
@@ -491,13 +472,16 @@
   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
     call error_handler("IN FieldGet", error)
 
- call ESMF_FieldGet(cell_longitude_input_grid,farrayPtr=data_1d2, rc=rc)
+ call ESMF_FieldGet(cell_longitude_input_grid,farrayPtr=data_1d2, &
+                    computationalLBound=clb, computationalUBound=cub, rc=rc)
   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
     call error_handler("IN FieldGet", error)
 
+ j = 1
  do i = cell_start, cell_end
-    data_1d(i) = latVert(i)
-    data_1d2(i) = lonVert(i)
+    data_1d(j) = latVert(i)
+    data_1d2(j) = lonVert(i)
+    j = j + 1
  enddo
 
  nullify(data_1d,data_1d2)
@@ -515,11 +499,13 @@
   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
     call error_handler("IN FieldGet", error)
 
+ j = 1
  do i = cell_start, cell_end
-    data_1d(i) = hgt(i)
+    data_1d(j) = hgt(i)
+    j = j+1
  enddo
  nullify(data_1d)
- deallocate(lonCell, latCell, lonVert, latVert,vertOnCell,dummy)
+ deallocate(lonCell, latCell, lonVert, latVert,vertOnCell)
 
 
  end subroutine define_input_grid
@@ -575,7 +561,7 @@
  ! Fill proj object for target grid projection
  !----------------------------------------------------------------------
  call push_source_projection(proj_code, stand_lon, truelat1, truelat2, &
-			  dxkm, dykm, dykm, dxkm, known_x, known_y, &
+			  dxkm, dykm, dlatdeg, dlondeg, known_x, known_y, &
 			  known_lat, known_lon)
 							  
 !-----------------------------------------------------------------------
@@ -693,7 +679,7 @@ call ESMF_GridGetCoord(target_grid, &
  allocate(latitude_corner_one(clb(1):cub(1),clb(2):cub(2)))
  allocate(longitude_corner_one(clb(1):cub(1),clb(2):cub(2)))
  call get_lat_lon_fields(latitude_corner_one, longitude_corner_one, clb(1),clb(2),cub(1),cub(2),CORNER)
-
+ print*, minval(latitude_corner_one), maxval(latitude_corner_one), minval(longitude_corner_one), maxval(longitude_corner_one)
 !-----------------------------------------------------------------------
 ! Read the mask and lat/lons.
 !-----------------------------------------------------------------------
@@ -723,7 +709,7 @@ call ESMF_GridGetCoord(target_grid, &
     call error_handler("IN FieldGET", error)
 
  if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LONGITUDE."
- call ESMF_FieldGet(latitude_target_grid, farrayPtr=lon_src_ptr, &
+ call ESMF_FieldGet(longitude_target_grid, farrayPtr=lon_src_ptr, &
                         computationalLBound=clb, computationalUBound=cub, &
                         rc=error)
   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
@@ -735,7 +721,7 @@ call ESMF_GridGetCoord(target_grid, &
         lon_src_ptr(i,j) = longitude_one(i,j)
   enddo
   enddo
-
+  nullify(lat_src_ptr, lon_src_ptr)
 ! E-W Stagger
 if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
  latitude_u_target_grid = ESMF_FieldCreate(target_grid, &
@@ -762,7 +748,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
     call error_handler("IN FieldGET", error)
 
  if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LONGITUDE."
- call ESMF_FieldGet(latitude_u_target_grid, farrayPtr=lon_src_ptr, &
+ call ESMF_FieldGet(longitude_u_target_grid, farrayPtr=lon_src_ptr, &
                         computationalLBound=clb, computationalUBound=cub, &
                         rc=error)
   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
@@ -773,6 +759,8 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
         lon_src_ptr(i,j) = longitude_u_one(i,j)
   enddo
   enddo
+
+  nullify(lat_src_ptr, lon_src_ptr)
  
  ! N-S Stagger
 if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
@@ -800,17 +788,19 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
     call error_handler("IN FieldGET", error)
 
  if (localpet==0) print*, "- CALL FieldGet FOR TARGET GRID LONGITUDE."
- call ESMF_FieldGet(latitude_v_target_grid, farrayPtr=lon_src_ptr, &
+ call ESMF_FieldGet(longitude_v_target_grid, farrayPtr=lon_src_ptr, &
                         computationalLBound=clb, computationalUBound=cub, &
                         rc=error)
   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
     call error_handler("IN FieldGet", error)
+  print*, localpet, cub(1), cub(2)
   do j = clb(2),cub(2)
   do i = clb(1),cub(1)
         lat_src_ptr(i,j) = latitude_v_one(i,j)
         lon_src_ptr(i,j) = longitude_v_one(i,j)
   enddo
   enddo
+  nullify(lat_src_ptr, lon_src_ptr)
 
  if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID HGT."
  hgt_target_grid = ESMF_FieldCreate(target_grid, &
@@ -1029,42 +1019,37 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
 
  integer, intent(in)          :: localpet, npets
 
- integer                      :: error, extra, i, j, clb(2), cub(2), omode, &
- 								 starts(2), counts(2)
+ integer                      :: error, extra, i, j, clb(2), cub(2), &
+                                 starts(2), counts(2)
 
  real(esmf_kind_r8), allocatable       :: latitude(:,:), longitude(:,:), &
                                           dum2d(:,:), templat(:,:), templon(:,:), &
                                           mapfac_temp(:,:)
  integer                               :: ncid,id_var, id_dim
  real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:), &
- 										  mapptr(:,:), hgtptr(:,:)
+                                          mapptr(:,:), hgtptr(:,:)
 
-
- ! indicate to use PnetCDF or HDF5 to carry out parallel I/O
- ! Note using NF_MPIIO is no longer required, as it has been
- ! deprecated since NetCDF 4.6.2.
- omode = IOR(omode, NF_MPIIO)
 
  the_file = file_target_grid
 
  if (localpet==0) print*,'- OPEN WRF INPUT FILE: ',trim(the_file)
- error=nf_open_par(trim(the_file),omode,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+ error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
  if (error /=0) call error_handler("OPENING WRF INPUT FILE",error)
 
  if (localpet==0) print*,'- READ WEST_EAST ID'
- error=nf_inq_dimid(ncid, 'west_east', id_dim)
+ error=nf90_inq_dimid(ncid, 'west_east', id_dim)
  call netcdf_err(error, 'reading west_east id')
 
  if (localpet==0) print*,'- READ WEST_EAST'
- error=nf90_inq_dimlen(ncid,id_dim,i_target)
+ error=nf90_inquire_dimension(ncid,id_dim,len=i_target)
  call netcdf_err(error, 'reading west_east')
 
  if (localpet==0) print*,'- READ SOUTH_NORTH ID'
- error=nf_inq_dimid(ncid, 'south_north', id_dim)
+ error=nf90_inq_dimid(ncid, 'south_north', id_dim)
  call netcdf_err(error, 'reading south_north id')
 
  if (localpet==0) print*,'- READ SOUTH_NORTH'
- error=nf90_inq_dimlen(ncid,id_dim,j_target)
+ error=nf90_inquire_dimension(ncid,id_dim,len=j_target)
  call netcdf_err(error, 'reading south_north')
 
  if (localpet==0) print*,'- READ GLOBAL ATTRIBUTE DX'
@@ -1185,25 +1170,25 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
  if (localpet==0) print*,'- READ LONGITUDE ID'
- error=nf_inq_varid(ncid, 'XLONG', id_var)
+ error=nf90_inq_varid(ncid, 'XLONG', id_var)
  if (error .ne. 0) then
-   error=nf_inq_varid(ncid, 'XLONG_M', id_var)
+   error=nf90_inq_varid(ncid, 'XLONG_M', id_var)
    call netcdf_err(error, 'reading longitude id')
  endif
 
  if (localpet==0) print*,'- READ LONGITUDE'
- error=nf_get_vara(ncid, id_var, starts,counts,templon)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templon)
  call netcdf_err(error, 'reading longitude')
  
  if (localpet==0) print*,'- READ LATITUDE ID'
- error=nf_inq_varid(ncid, 'XLAT', id_var)
+ error=nf90_inq_varid(ncid, 'XLAT', id_var)
  if (error .ne. 0) then
-   error=nf_inq_varid(ncid, 'XLAT_M', id_var)
+   error=nf90_inq_varid(ncid, 'XLAT_M', id_var)
    call netcdf_err(error, 'reading latitude id')
  endif
 
  if (localpet==0) print*,'- READ LATITUDE'
- error=nf_get_vara(ncid, id_var, starts,counts,templat)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
  call netcdf_err(error, 'reading latitude')
 	
     do j = clb(2),cub(2)
@@ -1317,19 +1302,19 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
  if (localpet==0) print*,'- READ LONGITUDE ID'
- error=nf_inq_varid(ncid, 'XLONG_U', id_var)
+ error=nf90_inq_varid(ncid, 'XLONG_U', id_var)
  call netcdf_err(error, 'reading longitude id')
 
  if (localpet==0) print*,'- READ LONGITUDE'
- error=nf_get_vara(ncid, id_var, starts,counts,templon)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templon)
  call netcdf_err(error, 'reading longitude')
  
  if (localpet==0) print*,'- READ LATITUDE ID'
- error=nf_inq_varid(ncid, 'XLAT_U', id_var)
+ error=nf90_inq_varid(ncid, 'XLAT_U', id_var)
  call netcdf_err(error, 'reading latitude id')
 
  if (localpet==0) print*,'- READ LATITUDE'
- error=nf_get_vara(ncid, id_var, starts,counts,templat)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
  call netcdf_err(error, 'reading latitude')
 	
     do j = clb(2),cub(2)
@@ -1371,19 +1356,19 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
  if (localpet==0) print*,'- READ LONGITUDE ID'
- error=nf_inq_varid(ncid, 'XLONGV', id_var)
+ error=nf90_inq_varid(ncid, 'XLONGV', id_var)
  call netcdf_err(error, 'reading longitude id')
 
  if (localpet==0) print*,'- READ LONGITUDE'
- error=nf_get_vara(ncid, id_var, starts,counts,templon)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templon)
  call netcdf_err(error, 'reading longitude')
  
  if (localpet==0) print*,'- READ LATITUDE ID'
- error=nf_inq_varid(ncid, 'XLAT_V', id_var)
+ error=nf90_inq_varid(ncid, 'XLAT_V', id_var)
  call netcdf_err(error, 'reading latitude id')
 
  if (localpet==0) print*,'- READ LATITUDE'
- error=nf_get_vara(ncid, id_var, starts,counts,templat)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
  call netcdf_err(error, 'reading latitude')
 	
     do j = clb(2),cub(2)
@@ -1422,11 +1407,11 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
  if (localpet==0) print*,'- READ MAPFAC_M ID'
- error=nf_inq_varid(ncid, 'MAPFAC_M', id_var)
+ error=nf90_inq_varid(ncid, 'MAPFAC_M', id_var)
  call netcdf_err(error, 'reading MAPFAC_M id')
 
  if (localpet==0) print*,'- READ MAPFAC_M'
- error=nf_get_vara(ncid, id_var, starts,counts,mapfac_temp)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=mapfac_temp)
  call netcdf_err(error, 'reading MAPFAC_M')
 
  do j=clb(2),cub(2)
@@ -1459,11 +1444,11 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
  if (localpet==0) print*,'- READ MAPFAC_U ID'
- error=nf_inq_varid(ncid, 'MAPFAC_U', id_var)
+ error=nf90_inq_varid(ncid, 'MAPFAC_U', id_var)
  call netcdf_err(error, 'reading MAPFAC_U id')
 
  if (localpet==0) print*,'- READ MAPFACU'
- error=nf_get_vara(ncid, id_var, starts,counts,mapfac_temp)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=mapfac_temp)
  call netcdf_err(error, 'reading MAPFAC_U')
 
  do j=clb(2),cub(2)
@@ -1496,11 +1481,11 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
  if (localpet==0) print*,'- READ MAPFAC_V ID'
- error=nf_inq_varid(ncid, 'MAPFAC_V', id_var)
+ error=nf90_inq_varid(ncid, 'MAPFAC_V', id_var)
  call netcdf_err(error, 'reading MAPFAC_V id')
 
  if (localpet==0) print*,'- READ MAPFAC_V'
- error=nf_get_vara(ncid, id_var, starts,counts,mapfac_temp)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=mapfac_temp)
  call netcdf_err(error, 'reading MAPFAC_V')
 
  do j=clb(2),cub(2)
@@ -1522,7 +1507,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
     call error_handler("IN FieldCreate", error)
 
  if (localpet==0) print*,"- CALL FieldGet FOR TARGET GRID hgt. "
- call ESMF_FieldGet(hgt_target_grid, farrayPtr=hgtprt, &
+ call ESMF_FieldGet(hgt_target_grid, farrayPtr=hgtptr, &
                     computationalLBound=clb,computationalUBound=cub, &
                     rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
@@ -1533,14 +1518,14 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
 
  if (localpet==0) print*,'- READ HGT ID'
- error=nf_inq_varid(ncid, 'HGT', id_var)
+ error=nf90_inq_varid(ncid, 'HGT', id_var)
  if (error .ne. 0) then
-   error=nf_inq_varid(ncid, 'HGT_M', id_var)
+   error=nf90_inq_varid(ncid, 'HGT_M', id_var)
    call netcdf_err(error, 'reading hgt id')
  endif
 
  if (localpet==0) print*,'- READ HGT'
- error=nf_get_vara(ncid, id_var, starts,counts, dum2d)
+ error=nf90_get_var(ncid, id_var, start=starts,count=counts, values=dum2d)
  call netcdf_err(error, 'reading hgt')
  
  do j=clb(2),cub(2)

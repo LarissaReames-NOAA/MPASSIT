@@ -82,6 +82,7 @@
  character(len=*), intent(in), optional :: filename
  integer, intent(in), optional          :: unum
  character(:), allocatable              :: filename_to_use
+ character(len=500)                     :: map_proj
  integer                                :: unit_to_use
  logical                                :: esmf_log
 
@@ -145,8 +146,7 @@
    j_target = ny
  
    map_proj = to_upper(target_grid_type)
- 
- 
+  
    ! Assign parameters to module variables
    if ((index(map_proj, 'LAMBERT') /= 0) .and. &
       (len_trim(map_proj) == len('LAMBERT'))) then
@@ -165,17 +165,16 @@
 
    else if ((index(map_proj, 'LAT-LON') /= 0) .and. &
            (len_trim(map_proj) == len('LAT-LON'))) then
-     proj_code = PROJ_CASSINI 
+     proj_code = PROJ_LATLON
      map_proj_char = 'Lat/Lon'
    else
-     call mprintf(.true.,ERROR,&
-                  'In namelist, invalid target_grid_type specified. Valid '// &
+     call error_handler('In namelist, invalid target_grid_type specified. Valid '// &
                   'projections are "lambert", "mercator", "polar", and '// &
-                  '"lat-lon".')
+                  '"lat-lon".',ERROR_CODE)
    end if
  
  
-   if (proj_code = PROJ_CASSINI) then
+   if (proj_code == PROJ_LATLON) then
      ! If no dx,dy specified, assume global grid
      if (dx == NAN .and. dy == NAN) then
         if (is_regional) then
@@ -203,6 +202,7 @@
         dlondeg = dx
         dxkm = dlondeg * EARTH_RADIUS_M * PI * 2.0 / 360.0
         dykm = dlatdeg * EARTH_RADIUS_M * PI * 2.0 / 360.0
+        print*, "dxkm, dykm = ", dxkm, dykm
         if (known_lat == NAN .or. known_lon == NAN) then
            call error_handler('For lat-lon projection, if dx/dy are specified, '// &
                     'a regional domain is assumed, and a ref_lat,ref_lon must also be specified',ERROR_CODE)
@@ -211,7 +211,7 @@
    end if
  
  ! Manually set truelat2 = truelat1 if truelat2 not specified for Lambert
-  if (proj_code=='PROJ_LC' truelat2 == NAN) then
+  if (proj_code==PROJ_LC .and. truelat2 == NAN) then
      if (truelat1 == NAN) call error_handler("No TRUELAT1 specified for Lambert conformal projection.",ERROR_CODE) 
      truelat2 = truelat1
   endif
