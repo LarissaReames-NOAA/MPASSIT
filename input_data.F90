@@ -984,7 +984,7 @@ subroutine read_varlist(localpet, file,nfields,field_names,field_names_target)
    enddo
    
    if (localpet==0) print*, "READING ", nfields, " FIELDS ACCORDING TO ", trim(file)
-   if ( nfields == 0) call error_handler("VARLIST FILE IS EMPTY.", -1)
+  !if ( nfields == 0) call error_handler("VARLIST FILE IS EMPTY.", -1) ! ok if there are no fields...
 
    allocate(field_names(nfields))
    allocate(field_names_target(nfields))
