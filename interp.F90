@@ -179,6 +179,7 @@
     isrctermprocessing = 1
     
     !if (.not. interp_diag) then
+    if (n_hist_fields_2d_patch > 0) then
         method = ESMF_REGRIDMETHOD_BILINEAR
         if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
     
@@ -193,10 +194,11 @@
             call error_handler("IN FieldBundleRegridStore", rc)
     !endif
      
-     if (localpet==0) print*,"- PATCH REGRID INIT FIELDS "                                
-     call ESMF_FieldBundleRegrid(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, rh_patch, rc=rc)
-     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-        call error_handler("IN FieldBundleRegrid", rc)
+       if (localpet==0) print*,"- PATCH REGRID INIT FIELDS "                                
+       call ESMF_FieldBundleRegrid(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, rh_patch, rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldBundleRegrid", rc)
+     endif
 
      if (localpet==0) print*,"- CREATE HGT PATCH REGRID ROUTEHANDLE"
 
@@ -214,6 +216,7 @@
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
         call error_handler("IN FieldBundleRegrid", rc)
 
+    if (n_hist_fields_3d_nz>0) then
      call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
@@ -227,6 +230,7 @@
      call ESMF_FieldBundleRegrid(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
+    endif
    
     if (n_hist_fields_3d_nzp1>0) then
        if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
