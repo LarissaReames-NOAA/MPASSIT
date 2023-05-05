@@ -25,6 +25,10 @@
  logical, public                 :: wrf_mod_vars = .false. !< Whether to modify variable values/dimensions 
                                                            !< to conform to WRF format. Set to true for
                                                            !< UPP-compatible output
+ logical, public                 :: interp_as_bundle = .true. !< If true, use ESMF_FieldBundleRegridStore and interpolate the fields as a bundle
+                                                              !< If false, use ESMFRegridStore and interpolate individual fields.
+                                                              !< .false. seems faster and less memory intensive
+                                                              !< Currently, only applies to conservative regridding
                                                            
 
  public :: read_setup_namelist
@@ -51,7 +55,7 @@
 
  namelist /config/ grid_file_input_grid, diag_file_input_grid, hist_file_input_grid, &
             file_target_grid, output_file, interp_diag, interp_hist, &
-                        wrf_mod_vars, esmf_log
+                        wrf_mod_vars, esmf_log, interp_as_bundle
 
  !print*,"- READ SETUP NAMELIST"
 
