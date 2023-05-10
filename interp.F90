@@ -18,7 +18,8 @@
                                     diag_file_input_grid, &
                                     grid_file_input_grid, &
                                     interp_diag, interp_hist, &
-                                    i_target, j_target
+                                    i_target, j_target, &
+                                    interp_as_bundle
 
  use model_grid, only             : input_grid, target_grid, &
                                     nCells_input, nVert_input,  &
@@ -171,6 +172,7 @@
     type(ESMF_RegridMethod_Flag)     :: method
     type(ESMF_RouteHandle)           :: rh_cons, rh_nstd
     type(ESMF_Field), allocatable    :: fields(:)
+    type(ESMF_Field), allocatable    :: fields_input_grid(:), fields_target_grid(:)
     real(esmf_kind_r8), pointer      :: field_ptr2(:,:), field_ptr3(:,:,:)
     
     
@@ -253,19 +255,51 @@
     if (n_hist_fields_2d_cons>0) then
        if (localpet==0) print*,"- CREATE HIST BUNDLE CONSERVATIVE REGRID ROUTEHANDLE"
        method = ESMF_REGRIDMETHOD_CONSERVE
-       call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, &
-                                         regridmethod=method, &
-                                         routehandle=rh_cons, &
-                                         srcTermProcessing=isrctermprocessing, &
-                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
-                                         rc=rc)
+       if ( interp_as_bundle ) then
+          call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, &
+                                            regridmethod=method, &
+                                            routehandle=rh_cons, &
+                                            srcTermProcessing=isrctermprocessing, &
+                                            unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                            rc=rc)
                                      
-       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-        call error_handler("IN FieldBundleRegridStore", rc)
+          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+           call error_handler("IN FieldBundleRegridStore", rc)
         
-       call ESMF_FieldBundleRegrid(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, rh_cons, rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-         call error_handler("IN FieldBundleRegrid", rc)
+          call ESMF_FieldBundleRegrid(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, rh_cons, rc=rc)
+          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleRegrid", rc)
+       else
+          allocate(fields_input_grid(n_hist_fields_2d_cons))
+          allocate(fields_target_grid(n_hist_fields_2d_cons))
+          call ESMF_FieldBundleGet(input_hist_bundle_2d_cons, fieldList=fields_input_grid, &
+                                itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                                rc=rc)
+          call ESMF_FieldBundleGet(target_hist_bundle_2d_cons, fieldList=fields_target_grid, &
+                                itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                                rc=rc)
+          call ESMF_FieldRegridStore(fields_input_grid(1), fields_target_grid(1), &
+                                      regridmethod=method, &
+                                      routehandle=rh_cons, &
+                                      srcTermProcessing=isrctermprocessing, &
+                                      unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                      rc=rc)
+          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+             call error_handler("IN FieldRegridStore", rc)
+
+          do i = 1, n_hist_fields_2d_cons
+             call ESMF_FieldRegrid(fields_input_grid(i), fields_target_grid(i), rh_cons, rc=rc)
+             if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+                call error_handler("IN FieldRegrid", rc)
+          enddo
+
+          ! update the fields in target_hist_bundle_2d_cons
+          call ESMF_FieldBundleAddReplace(target_hist_bundle_2d_cons, fields_target_grid, rc=rc)
+          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+             call error_handler("IN ESMF_FieldBundleAddReplace", rc)
+
+          deallocate(fields_input_grid,fields_target_grid)
+       endif
     endif
 
     if (n_hist_fields_2d_nstd>0) then
