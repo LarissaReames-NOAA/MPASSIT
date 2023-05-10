@@ -67,6 +67,12 @@
  integer, public                 :: proj_code             !< Integer code corresponding to the requested
                                                           !< target grid projection type
  character(len=500), public      :: map_proj_char         !< Map projection name
+ logical, public                 :: interp_as_bundle = .true. !< If true, use ESMF_FieldBundleRegridStore and interpolate the fields as a bundle
+                                                              !< If false, use ESMFRegridStore and interpolate individual fields.
+                                                              !< .false. seems faster and less memory intensive
+                                                              !< Currently, only applies to conservative regridding
+                                                           
+
  public :: read_setup_namelist
 
  contains
@@ -95,7 +101,7 @@
  namelist /config/ grid_file_input_grid, diag_file_input_grid, hist_file_input_grid, &
             file_target_grid, output_file, interp_diag, interp_hist, &
             wrf_mod_vars, esmf_log,target_grid_type,nx,ny,dx,dy,ref_lat,ref_lon,ref_x,ref_y,&
-            truelat1,truelat2,stand_lon,is_regional,pole_lat,pole_lon
+            truelat1,truelat2,stand_lon,is_regional,pole_lat,pole_lon, interp_as_bundle
 
   ref_x = NAN
   ref_y = NAN
