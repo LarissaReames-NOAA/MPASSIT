@@ -18,7 +18,7 @@
                                     diag_file_input_grid, &
                                     grid_file_input_grid, &
                                     interp_diag, interp_hist, &
-                                    i_target, j_target
+                                    i_target, j_target, &
                                     interp_as_bundle
 
  use model_grid, only             : input_grid, target_grid, &

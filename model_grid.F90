@@ -1027,7 +1027,8 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
                                           mapfac_temp(:,:)
  integer                               :: ncid,id_var, id_dim
  real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:), &
-                                          mapptr(:,:), hgtptr(:,:)
+                                          mapptr(:,:), hgtptr(:,:), &
+                                          clat_src_ptr(:,:), clon_src_ptr(:,:)
 
 
  the_file = file_target_grid
@@ -1241,7 +1242,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
    call ESMF_GridGetCoord(target_grid, &
                           staggerLoc=ESMF_STAGGERLOC_CORNER, &
                           coordDim=1, &
-                          farrayPtr=lon_src_ptr, rc=error)
+                          farrayPtr=clon_src_ptr, rc=error)
    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
       call error_handler("IN GridGetCoord", error)
 
@@ -1252,24 +1253,26 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
                           coordDim=2, &
                           computationalLBound=clb, &
                           computationalUBound=cub, &
-                          farrayPtr=lat_src_ptr, rc=error)
+                          farrayPtr=clat_src_ptr, rc=error)
    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
       call error_handler("IN GridGetCoord", error)
       
   allocate(latitude(i_target,j_target))
   allocate(longitude(i_target,j_target))
-  call ESMF_FieldGather(latitude_target_grid, latitude, rootPET=0, rc=error)
+  call ESMF_FieldGet(latitude_target_grid, farrayPtr=lat_src_ptr, rc=error)
      if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-      call error_handler("IN FieldGather", error)
+      call error_handler("IN FieldGet", error)
       
-  call ESMF_FieldGather(longitude_target_grid, longitude, rootPET=0, rc=error)
+  call ESMF_FieldGet(longitude_target_grid, farrayPtr=lon_src_ptr, rc=error)
      if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-      call error_handler("IN FieldGather", error)
+      call error_handler("IN FieldGet", error)
    
-  call get_cell_corners(latitude, longitude, lat_src_ptr, lon_src_ptr, dx, clb, cub)
+  call get_cell_corners(lat_src_ptr, lon_src_ptr, clat_src_ptr, clon_src_ptr, dx, clb, cub)
 	
   nullify(lon_src_ptr)
   nullify(lat_src_ptr)
+  nullify(clon_src_ptr)
+  nullify(clat_src_ptr)
   deallocate(templat,templon)
   deallocate(latitude,longitude)
   
@@ -1630,9 +1633,9 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
   subroutine get_cell_corners( latitude, longitude, latitude_sw, longitude_sw, dx,clb,cub)
   implicit none
 
-  real(esmf_kind_r8), intent(in)    :: latitude(i_target,j_target)
+  real(esmf_kind_r8), intent(in), pointer :: latitude(:,:)
   real(esmf_kind_r8), intent(inout), pointer   :: latitude_sw(:,:)
-  real(esmf_kind_r8), intent(in)    :: longitude(i_target, j_target)
+  real(esmf_kind_r8), intent(in),pointer    :: longitude(:,:)
   real(esmf_kind_r8), intent(inout), pointer   :: longitude_sw(:,:)
   real(esmf_kind_r8), intent(in)    :: dx !grid cell side size (m)
 
@@ -1652,8 +1655,8 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
   do j = clb(2),cub(2)
    do i = clb(1), cub(1)
          if (j == jp1_target .and. i == ip1_target) then
-       lat1 = latitude(i_target,j_target)  * ( pi / 180.0_esmf_kind_r8 )
-       lon1 = longitude(i_target,j_target) * ( pi / 180.0_esmf_kind_r8 )
+             lat1 = latitude(i_target,j_target)  * ( pi / 180.0_esmf_kind_r8 )
+             lon1 = longitude(i_target,j_target) * ( pi / 180.0_esmf_kind_r8 )
              brng = 315.0_esmf_kind_r8 * pi / 180.0_esmf_kind_r8
              lat2 = asin( sin( lat1 ) * cos( d / R ) + cos( lat1 ) * sin( d / R ) * cos( brng ) );
              lon2= lon1 + atan2( sin( brng ) * sin( d / R ) * cos( lat1 ), cos( d / R ) - sin( lat1 ) * sin( lat2 ) );
@@ -1696,6 +1699,9 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
 
    enddo
  enddo
+
+ print*, minval(latitude),maxval(latitude), minval(latitude_sw), maxval(latitude_sw)
+ print*, minval(longitude), maxval(longitude), minval(longitude_sw), maxval(longitude_sw)
 
  end subroutine get_cell_corners
 
