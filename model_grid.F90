@@ -229,7 +229,8 @@
  the_file = grid_file_input_grid
 
  if (localpet==0) print*,'- OPEN MPAS INPUT FILE: ',trim(the_file)
- error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+!error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+ error=nf90_open(trim(the_file),nf90_nowrite,ncid) ! CSS
  if (error /=0) call error_handler("OPENING MPAS INPUT FILE",error)
 
  !Get nCells size
@@ -1034,8 +1035,9 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
  the_file = file_target_grid
 
  if (localpet==0) print*,'- OPEN WRF INPUT FILE: ',trim(the_file)
- error=nf90_open(trim(the_file),nf90_nowrite,ncid)
- !error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+!error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+ error=nf90_open(trim(the_file),nf90_nowrite,ncid) ! CSS
+
  if (error /=0) call error_handler("OPENING WRF INPUT FILE",error)
 
  if (localpet==0) print*,'- READ WEST_EAST ID'
@@ -1263,6 +1265,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
      if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
       call error_handler("IN FieldGet", error)
       
+
   call ESMF_FieldGet(longitude_target_grid, farrayPtr=lon_src_ptr, rc=error)
      if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
       call error_handler("IN FieldGet", error)
@@ -1396,9 +1399,11 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
  starts = (/clb(1),clb(2)/)
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
- if (localpet==0) print*,'- READ LONGITUDE V ID'
- error=nf90_inq_varid(ncid, 'XLONG_V', id_var)
- call netcdf_err(error, 'reading longitude v id')
+
+ if (localpet==0) print*,'- READ LONGITUDE ID'
+ error=nf90_inq_varid(ncid, 'XLONG_V', id_var) ! CSS bug fix (was XLONGV)
+ call netcdf_err(error, 'reading longitude id')
+
 
  if (localpet==0) print*,'- READ LONGITUDE V'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templon)
@@ -1575,6 +1580,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
  deallocate(mapfac_temp)
 
 !------- Height field
+! CSS changed from ESMF_STAGGERLOC_EDGE2 to ESMF_STAGGERLOC_CENTER
   if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID hgt."
  hgt_target_grid = ESMF_FieldCreate(target_grid, &
                                    typekind=ESMF_TYPEKIND_R8, &
