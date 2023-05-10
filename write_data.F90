@@ -994,9 +994,6 @@ if (localpet == 0) then
    vs = substr(valid_time(1,1),18,19)
    xtime_dt = datetime(sy,sm,sd,sh,smi,ss) - datetime(vy,vm,vd,vh,vmi,vs)
 
-   print*, trim(start_time)
-   print*, trim(valid_time(1,1))
-   print*, xtime_dt%total_seconds()
    error = nf90_put_var( ncid, id_xtime, (/xtime_dt%total_seconds()/60.0/), count=(/1/))
    call netcdf_err(error, 'WRITING XTIME RECORD' )
  endif
@@ -1153,7 +1150,6 @@ if (localpet == 0) then
 
                 if (wrf_mod_vars .and. trim(varname)=='P_HYD') then
                     dum1d(1) = maxval(dum3d)
-                    print*, "initial p_top = ", dum1d(1)
                     do i = 1,i_target
                     do j = 1,j_target
                       if (dum3d(i,j,nz_input) >= 10.0_esmf_kind_r8) then
@@ -1161,7 +1157,6 @@ if (localpet == 0) then
                       endif
                     enddo
                     enddo
-                    print*, "P_TOP", dum1d(1)
                     error = nf90_put_var( ncid, id_ptop, dum1d, &
                                         count=(/1/))
                     call netcdf_err(error, 'WRITING RECORD' )

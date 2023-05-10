@@ -219,7 +219,7 @@
  if (localpet==0) print*,'- read output_interval from diag file'
  error = nf90_get_att(ncid,NF90_GLOBAL,'output_interval',diag_out_interval)
  if (error .ne. 0) then
-   print*, 'error reading output_interval from diag file, setting to 0'
+   if (localpet==0) print*, 'error reading output_interval from diag file, setting to 0'
    diag_out_interval = 0
  endif
 
@@ -372,10 +372,10 @@
  call netcdf_err(error, 'reading strlen dim id')
  error = nf90_inquire_dimension(ncid,id_var,len=strlen)
  if ( .not. allocated(valid_time)) allocate(valid_time(1,strlen)) !may have been allocated in read_input_diag_data, hence the condition
- print*, "strlen = ", strlen
+
  error = nf90_inq_varid(ncid,vname,id_var)
  call netcdf_err(error, 'reading xtime id')
- print*, "getting xtime"
+ if (localpet==0) print*, "getting xtime"
  error = nf90_get_var(ncid, id_var, valid_time)
  call netcdf_err(error, 'getting xtime')
 
@@ -383,9 +383,9 @@
 ! Initialize 2d esmf atmospheric fields for bilinear/patch interpolation
 !---------------------------------------------------------------------------
 
- print*, "Begin reading variables"
+ if (localpet==0) print*, "Begin reading variables"
  if (n_hist_fields_2d_patch > 0) then
-    print*, "read 2d hist"
+    if (localpet==0) print*, "read 2d hist"
     allocate(fields(n_hist_fields_2d_patch))
     allocate(target_hist_units_2d_patch(n_hist_fields_2d_patch))
     allocate(target_hist_longname_2d_patch(n_hist_fields_2d_patch))
@@ -406,7 +406,7 @@
         call ESMF_FieldGet(fields(i), name=vname, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
-        print*, vname
+        if (localpet==0) print*, vname
         call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
          call error_handler("IN FieldGet", rc)
@@ -437,7 +437,7 @@
 !---------------------------------------------------------------------------
 
  if (n_hist_fields_2d_cons > 0) then
-    print*, "read 2d hist cons"
+    if (localpet==0) print*, "read 2d hist cons"
     allocate(fields(n_hist_fields_2d_cons))
     allocate(target_hist_units_2d_cons(n_hist_fields_2d_cons))
     allocate(target_hist_longname_2d_cons(n_hist_fields_2d_cons))

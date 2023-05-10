@@ -523,9 +523,9 @@
 
  integer, intent(in) :: localpet, npets
  if(trim(target_grid_type) == 'file') then
- 	call define_target_grid_file(localpet,npets)
+    call define_target_grid_file(localpet,npets)
  else
- 	call define_target_grid_params(localpet,npets)
+    call define_target_grid_params(localpet,npets)
  endif
  
  end subroutine define_target_grid
@@ -553,7 +553,7 @@
  integer                               :: ncid,id_var, id_dim
  real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:),& 
                                                 mapptr(:,:)
- type(esmf_polekind_flag)       	   :: polekindflag(2)
+ type(esmf_polekind_flag)              :: polekindflag(2)
  
  ip1_target = i_target + 1
  jp1_target = j_target + 1
@@ -562,33 +562,33 @@
  ! Fill proj object for target grid projection
  !----------------------------------------------------------------------
  call push_source_projection(proj_code, stand_lon, truelat1, truelat2, &
-			  dxkm, dykm, dlatdeg, dlondeg, known_x, known_y, &
-			  known_lat, known_lon)
-							  
+              dxkm, dykm, dlatdeg, dlondeg, known_x, known_y, &
+              known_lat, known_lon)
+                              
 !-----------------------------------------------------------------------
 ! Create ESMF grid object for the model grid.
 !-----------------------------------------------------------------------
 
  if (.not. is_regional ) then
- 	 polekindflag(1:2) = ESMF_POLEKIND_MONOPOLE
-	 print*,"- CALL GridCreate1PeriDim FOR INPUT GRID."
-	 target_grid = ESMF_GridCreate1PeriDim(minIndex=(/1,1/), &
-			maxIndex=(/i_target,j_target/), &
-			polekindflag=polekindflag, &
-			periodicDim=1, &
-			poleDim=2,  &
-			coordSys=ESMF_COORDSYS_SPH_DEG, &
-			regDecomp=(/1,npets/),  &
-			indexflag=ESMF_INDEX_GLOBAL, rc=error)
-	 if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-	   call error_handler("IN GridCreate1PeriDim", error)
+     polekindflag(1:2) = ESMF_POLEKIND_MONOPOLE
+     print*,"- CALL GridCreate1PeriDim FOR INPUT GRID."
+     target_grid = ESMF_GridCreate1PeriDim(minIndex=(/1,1/), &
+            maxIndex=(/i_target,j_target/), &
+            polekindflag=polekindflag, &
+            periodicDim=1, &
+            poleDim=2,  &
+            coordSys=ESMF_COORDSYS_SPH_DEG, &
+            regDecomp=(/1,npets/),  &
+            indexflag=ESMF_INDEX_GLOBAL, rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       call error_handler("IN GridCreate1PeriDim", error)
  else
-	 if (localpet==0) print*,"- CALL GridCreateNoPeriDim FOR TARGET MODEL GRID"
-	 target_grid = ESMF_GridCreateNoPeriDim(maxIndex=(/i_target,j_target/), &
-			   indexflag=ESMF_INDEX_GLOBAL, &
-			   rc=error)
-	 if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-		call error_handler("IN GridCreateNoPeriDim", error)
+     if (localpet==0) print*,"- CALL GridCreateNoPeriDim FOR TARGET MODEL GRID"
+     target_grid = ESMF_GridCreateNoPeriDim(maxIndex=(/i_target,j_target/), &
+               indexflag=ESMF_INDEX_GLOBAL, &
+               rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
+        call error_handler("IN GridCreateNoPeriDim", error)
  endif
     
  if (localpet==0) print*,"- CALL GridAddCoord FOR INPUT GRID CENTER."
@@ -614,7 +614,7 @@
                         staggerloc=ESMF_STAGGERLOC_EDGE2, rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
     call error_handler("IN GridAddCoord", error)
-							  
+                              
    
 !-----------------------------------------------------------------------
 ! Generate lat/lon array values for various staggers
@@ -631,7 +631,7 @@
                           
  allocate(latitude_one(clb(1):cub(1),clb(2):cub(2)))
  allocate(longitude_one(clb(1):cub(1),clb(2):cub(2)))
- allocate(mapfac_m_one(clb(1):cub(1),clb(2):cub(2)))     			   
+ allocate(mapfac_m_one(clb(1):cub(1),clb(2):cub(2)))                   
  call get_lat_lon_fields(latitude_one, longitude_one, clb(1),clb(2),cub(1),cub(2),M) 
  call get_map_factor(latitude_one, longitude_one, mapfac_m_one, mapfac_m_one, clb(1),clb(2),cub(1),cub(2))
  
@@ -1151,20 +1151,20 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
   if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID X-COORD."
   nullify(lon_src_ptr)
   call ESMF_GridGetCoord(target_grid, &
-					  staggerLoc=ESMF_STAGGERLOC_CENTER, &
-					  coordDim=1, &
-					  farrayPtr=lon_src_ptr, rc=error)
+                      staggerLoc=ESMF_STAGGERLOC_CENTER, &
+                      coordDim=1, &
+                      farrayPtr=lon_src_ptr, rc=error)
   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
    call error_handler("IN GridGetCoord", error)
 
   if (localpet==0) print*,"- CALL GridGetCoord FOR INPUT GRID Y-COORD."
   nullify(lat_src_ptr)
   call ESMF_GridGetCoord(target_grid, &
-					  staggerLoc=ESMF_STAGGERLOC_CENTER, &
-					  coordDim=2, &
-					  computationalLBound=clb, &
-					  computationalUBound=cub, &
-					  farrayPtr=lat_src_ptr, rc=error)
+                      staggerLoc=ESMF_STAGGERLOC_CENTER, &
+                      coordDim=2, &
+                      computationalLBound=clb, &
+                      computationalUBound=cub, &
+                      farrayPtr=lat_src_ptr, rc=error)
 if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
   call error_handler("IN GridGetCoord", error)
 
@@ -1194,7 +1194,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  if (localpet==0) print*,'- READ LATITUDE'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
  call netcdf_err(error, 'reading latitude')
-	
+    
     do j = clb(2),cub(2)
       do i = clb(1), cub(1)
         lon_src_ptr(i,j)=real(templon(i,j),esmf_kind_r8)
@@ -1232,8 +1232,8 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  
  do j = clb(2),cub(2)
  do i = clb(1), cub(1)
-	lon_src_ptr(i,j)=real(templon(i,j),esmf_kind_r8)
-	lat_src_ptr(i,j)=real(templat(i,j),esmf_kind_r8)
+    lon_src_ptr(i,j)=real(templon(i,j),esmf_kind_r8)
+    lat_src_ptr(i,j)=real(templat(i,j),esmf_kind_r8)
  enddo
  enddo  
   
@@ -1271,7 +1271,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
       call error_handler("IN FieldGet", error)
    
   call get_cell_corners(lat_src_ptr, lon_src_ptr, clat_src_ptr, clon_src_ptr, dx, clb, cub)
-	
+    
   nullify(lon_src_ptr)
   nullify(lat_src_ptr)
   nullify(clon_src_ptr)
@@ -1323,7 +1323,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  if (localpet==0) print*,'- READ LATITUDE U'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
  call netcdf_err(error, 'reading latitude u')
-	
+    
     do j = clb(2),cub(2)
       do i = clb(1), cub(1)
         lon_src_ptr(i,j)=real(templon(i,j),esmf_kind_r8)
@@ -1416,7 +1416,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
  if (localpet==0) print*,'- READ LATITUDE V'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
  call netcdf_err(error, 'reading latitude v')
-	
+    
     do j = clb(2),cub(2)
       do i = clb(1), cub(1)
         lon_src_ptr(i,j)=real(templon(i,j),esmf_kind_r8)
@@ -1705,9 +1705,6 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
 
    enddo
  enddo
-
- print*, minval(latitude),maxval(latitude), minval(latitude_sw), maxval(latitude_sw)
- print*, minval(longitude), maxval(longitude), minval(longitude_sw), maxval(longitude_sw)
 
  end subroutine get_cell_corners
 

@@ -79,7 +79,7 @@ module llxy_module
                       r_earth=earth_radius)
   
       else if (iprojection == PROJ_CYL) then
-    	call error_handler('Should not have PROJ_CYL as projection for ' &
+        call error_handler('Should not have PROJ_CYL as projection for ' &
                           //'target data in push_source_projection().',ERROR_CODE)
   
       else if (iprojection == PROJ_CASSINI) then
