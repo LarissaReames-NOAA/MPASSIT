@@ -1033,7 +1033,8 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
  the_file = file_target_grid
 
  if (localpet==0) print*,'- OPEN WRF INPUT FILE: ',trim(the_file)
- error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
+ error=nf90_open(trim(the_file),nf90_nowrite,ncid)
+ !error=nf90_open_par(trim(the_file),NF90_NOWRITE,MPI_COMM_WORLD, MPI_INFO_NULL, ncid)
  if (error /=0) call error_handler("OPENING WRF INPUT FILE",error)
 
  if (localpet==0) print*,'- READ WEST_EAST ID'
@@ -1171,7 +1172,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  
  if (localpet==0) print*,'- READ LONGITUDE ID'
  error=nf90_inq_varid(ncid, 'XLONG', id_var)
- if (error .ne. 0) then
+ if (error /= NF90_NOERR) then
    error=nf90_inq_varid(ncid, 'XLONG_M', id_var)
    call netcdf_err(error, 'reading longitude id')
  endif
@@ -1182,7 +1183,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  
  if (localpet==0) print*,'- READ LATITUDE ID'
  error=nf90_inq_varid(ncid, 'XLAT', id_var)
- if (error .ne. 0) then
+ if (error .ne. NF90_NOERR) then
    error=nf90_inq_varid(ncid, 'XLAT_M', id_var)
    call netcdf_err(error, 'reading latitude id')
  endif
@@ -1259,11 +1260,11 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
   allocate(longitude(i_target,j_target))
   call ESMF_FieldGather(latitude_target_grid, latitude, rootPET=0, rc=error)
      if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-      call error_handler("IN FieldFather", error)
+      call error_handler("IN FieldGather", error)
       
-  call ESMF_FieldGather(latitude_target_grid, latitude, rootPET=0, rc=error)
+  call ESMF_FieldGather(longitude_target_grid, longitude, rootPET=0, rc=error)
      if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__)) &
-      call error_handler("IN FieldFather", error)
+      call error_handler("IN FieldGather", error)
    
   call get_cell_corners(latitude, longitude, lat_src_ptr, lon_src_ptr, dx, clb, cub)
 	
@@ -1301,21 +1302,21 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  starts = (/clb(1),clb(2)/)
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
- if (localpet==0) print*,'- READ LONGITUDE ID'
+ if (localpet==0) print*,'- READ LONGITUDE U ID'
  error=nf90_inq_varid(ncid, 'XLONG_U', id_var)
- call netcdf_err(error, 'reading longitude id')
+ call netcdf_err(error, 'reading longitude u id')
 
- if (localpet==0) print*,'- READ LONGITUDE'
+ if (localpet==0) print*,'- READ LONGITUDE U'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templon)
- call netcdf_err(error, 'reading longitude')
+ call netcdf_err(error, 'reading longitude u')
  
- if (localpet==0) print*,'- READ LATITUDE ID'
+ if (localpet==0) print*,'- READ LATITUDE U ID'
  error=nf90_inq_varid(ncid, 'XLAT_U', id_var)
- call netcdf_err(error, 'reading latitude id')
+ call netcdf_err(error, 'reading latitude u id')
 
- if (localpet==0) print*,'- READ LATITUDE'
+ if (localpet==0) print*,'- READ LATITUDE U'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
- call netcdf_err(error, 'reading latitude')
+ call netcdf_err(error, 'reading latitude u')
 	
     do j = clb(2),cub(2)
       do i = clb(1), cub(1)
@@ -1326,6 +1327,43 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
 
   nullify(lon_src_ptr)
   nullify(lat_src_ptr)
+
+if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
+ latitude_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                   name="target_grid_latitude u", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LONGITUDE."
+ longitude_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                   name="target_grid_longitude u", &
+                                   rc=error)
+
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+  call ESMF_FieldGet(latitude_u_target_grid, farrayPtr=lat_src_ptr,rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN FieldGet", error)
+
+  call ESMF_FieldGet(longitude_u_target_grid, farrayPtr=lon_src_ptr,rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN FieldGet", error)
+
+  do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+        lon_src_ptr(i,j)=real(templon(i,j),esmf_kind_r8)
+        lat_src_ptr(i,j)=real(templat(i,j),esmf_kind_r8)
+      enddo
+    enddo
+  nullify(lat_src_ptr)
+  nullify(lon_src_ptr)
   deallocate(templat,templon)
   
 !---------- N-S stagger grid coordinate creation
@@ -1355,21 +1393,21 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
  starts = (/clb(1),clb(2)/)
  counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
  
- if (localpet==0) print*,'- READ LONGITUDE ID'
- error=nf90_inq_varid(ncid, 'XLONGV', id_var)
- call netcdf_err(error, 'reading longitude id')
+ if (localpet==0) print*,'- READ LONGITUDE V ID'
+ error=nf90_inq_varid(ncid, 'XLONG_V', id_var)
+ call netcdf_err(error, 'reading longitude v id')
 
- if (localpet==0) print*,'- READ LONGITUDE'
+ if (localpet==0) print*,'- READ LONGITUDE V'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templon)
- call netcdf_err(error, 'reading longitude')
+ call netcdf_err(error, 'reading longitude v')
  
- if (localpet==0) print*,'- READ LATITUDE ID'
+ if (localpet==0) print*,'- READ LATITUDE V ID'
  error=nf90_inq_varid(ncid, 'XLAT_V', id_var)
- call netcdf_err(error, 'reading latitude id')
+ call netcdf_err(error, 'reading latitude v id')
 
- if (localpet==0) print*,'- READ LATITUDE'
+ if (localpet==0) print*,'- READ LATITUDE V'
  error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=templat)
- call netcdf_err(error, 'reading latitude')
+ call netcdf_err(error, 'reading latitude v')
 	
     do j = clb(2),cub(2)
       do i = clb(1), cub(1)
@@ -1380,6 +1418,43 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
 
   nullify(lon_src_ptr)
   nullify(lat_src_ptr)
+
+if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
+ latitude_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                   name="target_grid_latitude_v", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LONGITUDE."
+ longitude_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                   name="target_grid_longitude_v", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+  call ESMF_FieldGet(latitude_v_target_grid, farrayPtr=lat_src_ptr,rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN FieldGet", error)
+
+  call ESMF_FieldGet(longitude_v_target_grid, farrayPtr=lon_src_ptr,rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+      call error_handler("IN FieldGet", error)
+
+  do j = clb(2),cub(2)
+      do i = clb(1), cub(1)
+        lon_src_ptr(i,j)=real(templon(i,j),esmf_kind_r8)
+        lat_src_ptr(i,j)=real(templat(i,j),esmf_kind_r8)
+      enddo
+    enddo
+  nullify(lat_src_ptr)
+  nullify(lon_src_ptr)
+
   deallocate(templat,templon)
   
 !----------------------------------------------------------
@@ -1500,7 +1575,7 @@ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,fil
   if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID hgt."
  hgt_target_grid = ESMF_FieldCreate(target_grid, &
                                    typekind=ESMF_TYPEKIND_R8, &
-                                   staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                   staggerloc=ESMF_STAGGERLOC_CENTER, &
                                    name="target_grid_hgt", &
                                    rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
