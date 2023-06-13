@@ -23,7 +23,7 @@
 
  use mpi
  use esmf
-
+ use utils_mod
  !use interp, only              : interp_driver
 
  use program_setup, only       : read_setup_namelist, LogType

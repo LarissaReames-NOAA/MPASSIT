@@ -1,6 +1,7 @@
 
  module write_data
 
+ use utils_mod
  use program_setup, only   : output_file
  use datetime_module, only: datetime, timedelta, clock
  private
@@ -22,9 +23,11 @@
  use mpi
 
  use program_setup, only           : interp_diag, interp_hist, &
-                                     wrf_mod_vars
+                                     wrf_mod_vars, truelat1,truelat2, &
+                                     stand_lon,proj_code,map_proj_char, &
+                                     i_target, j_target
 
- use model_grid, only              : i_target, j_target, &
+ use model_grid, only              : target_grid, &
                                      ip1_target, jp1_target, &
                                      nz_input, nzp1_input, &
                                      nsoil_input, &
@@ -33,15 +36,18 @@
                                      strlen, valid_time, &
                                      lsm_scheme, mp_scheme, &
                                      conv_scheme, &
-                                     cen_lat, cen_lon, truelat1, &
-                                     truelat2, moad_cen_lat, &
-                                     stand_lon, pole_lat, pole_lon, &
-                                     map_proj, map_proj_char, &
+                                     cen_lat, cen_lon,  &
+                                     moad_cen_lat, &
+                                     pole_lat, pole_lon, &
                                      longitude_target_grid, &
                                      latitude_target_grid, &
-                                     latitude_u,longitude_u, &
-                                     latitude_v, longitude_v, &
-                                     MAPFAC_M, MAPFAC_U, MAPFAC_V, &
+                                     longitude_u_target_grid, &
+                                     latitude_u_target_grid, &
+                                     longitude_v_target_grid, &
+                                     latitude_v_target_grid, &
+                                     mapfac_m_target_grid, &
+                                     mapfac_u_target_grid, &
+                                     mapfac_v_target_grid, &
                                      zs_target_grid, &
                                      hgt_target_grid, &
                                      target_diag_bundle, &
@@ -94,9 +100,11 @@
  integer                          :: sy,sm,sd,sh,smi,ss,  vy,vm,vd,vh,vmi,vs
  integer, allocatable             :: id_vars2(:), id_vars3_nz(:), id_vars3_nzp1(:), &
                                      id_vars_soil(:)
+ integer                          :: maxinds(2), mininds(2)
 
  real(esmf_kind_r8), allocatable  :: dum2d(:,:), dum2dt(:,:,:), &
-                                     dum2dtu(:,:,:), dum2dtv(:,:,:), &
+                                     dum2du(:,:), dum2dtu(:,:,:), &
+                                     dum2dv(:,:), dum2dtv(:,:,:), &
                                      dum3d(:,:,:), dum3dt(:,:,:,:), &
                                      dum3dp1(:,:,:), dum3dp1t(:,:,:,:), &
                                      dumsoil(:,:,:), dumsoilt(:,:,:,:), &
@@ -111,13 +119,17 @@
  allocate(id_vars3_nz(n_hist_fields_3d_nz+1))
  allocate(id_vars3_nzp1(n_hist_fields_3d_nzp1))
  allocate(id_vars_soil(n_hist_fields_soil))
-
+ 
  if (localpet ==0) then
    allocate(dumsmall(nsoil_input,1))
    allocate(dum2d(i_target,j_target))
    allocate(dum2dt(i_target,j_target,1))
-   allocate(dum2dtu(ip1_target,j_target,1))
-   allocate(dum2dtv(i_target,jp1_target,1))
+   call ESMF_GridGet(target_grid,1,ESMF_STAGGERLOC_EDGE1,maxIndex=maxinds,minIndex=mininds,rc=error)
+   allocate(dum2du(maxinds(1)-mininds(1)+1,maxinds(2)-mininds(2)+1))
+   allocate(dum2dtu(maxinds(1)-mininds(1)+1,maxinds(2)-mininds(2)+1,1))
+   call ESMF_GridGet(target_grid,1,ESMF_STAGGERLOC_EDGE2,maxIndex=maxinds,minIndex=mininds,rc=error)
+   allocate(dum2dv(maxinds(1)-mininds(1)+1,maxinds(2)-mininds(2)+1))
+   allocate(dum2dtv(maxinds(1)-mininds(1)+1,maxinds(2)-mininds(2)+1,1))
    allocate(dum3d(i_target,j_target,nz_input))
    allocate(dum3dt(i_target,j_target,nz_input,1))
    allocate(dum3dp1(i_target,j_target,nzp1_input))
@@ -129,6 +141,10 @@
    allocate(dumsmall(0,0))
    allocate(dum2d(0,0))
    allocate(dum2dt(0,0,0))
+   allocate(dum2du(0,0))
+   allocate(dum2dtu(0,0,0))
+   allocate(dum2dv(0,0))
+   allocate(dum2dtv(0,0,0))
    allocate(dum3d(0,0,0))
    allocate(dum3dt(0,0,0,0))
    allocate(dum3dp1(0,0,0))
@@ -222,7 +238,7 @@ if (localpet == 0) then
    error = nf90_put_att(ncid, NF90_GLOBAL, 'POL_ELAT', pole_lat)
    call netcdf_err(error, 'DEFINING POLE_LAT GLOBAL ATTRIBUTE')
 
-   error = nf90_put_att(ncid, NF90_GLOBAL, 'MAP_PROJ', map_proj)
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'MAP_PROJ', proj_code)
    call netcdf_err(error, 'DEFINING MAP_PROJ GLOBAL ATTRIBUTE')
 
    error = nf90_put_att(ncid, NF90_GLOBAL, 'MAP_PROJ_CHAR', map_proj_char)
@@ -852,57 +868,81 @@ if (localpet == 0) then
  endif
 
 !  longitude on u grid
-
- if (localpet ==0) then
-   dum2dtu(:,:,1) = longitude_u
-   error = nf90_put_var( ncid, id_lonu, dum2dtu, count=(/ip1_target,j_target,1/))
+ if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LONGITUDE U"
+ call ESMF_FieldGather(longitude_u_target_grid,dum2dtu(:,:,1),rootPet=0,rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
+ if (localpet==0) then
+   error = nf90_put_var( ncid, id_lonu, dum2dtu, count=shape(dum2dtu))
    call netcdf_err(error, 'WRITING XLONG_U RECORD' )
  endif
 
 !  latitude on u grid
 
- if (localpet ==0) then
-   dum2dtu(:,:,1) = latitude_u
-   error = nf90_put_var( ncid, id_latu, dum2dtu,count=(/ip1_target,j_target,1/))
+ if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LATITUDE U"
+ call ESMF_FieldGather(latitude_u_target_grid,dum2dtu(:,:,1),rootPet=0,rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
+ if (localpet==0) then
+   error = nf90_put_var( ncid, id_latu, dum2dtu,count=shape(dum2dtu))
    call netcdf_err(error, 'WRITING XLAT_U RECORD' )
- endif
-
-!  longitude on v grid
-
- if (localpet ==0) then
-   dum2dtv(:,:,1) = longitude_v
-   error = nf90_put_var( ncid, id_lonv, dum2dtv, count=(/i_target,jp1_target,1/))
-   call netcdf_err(error, 'WRITING XLONG_U RECORD' )
  endif
 
 !  latitude on v grid
-
- if (localpet ==0) then
-   dum2dtv(:,:,1) = latitude_v
-   error = nf90_put_var( ncid, id_latv, dum2dtv,count=(/i_target,jp1_target,1/))
-   call netcdf_err(error, 'WRITING XLAT_U RECORD' )
+ if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LATITUDE V"
+ call ESMF_FieldGather(latitude_v_target_grid,dum2dv(:,:),rootPet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
+ if (localpet==0) then
+   maxinds = shape(dum2dv)
+   error = nf90_put_var( ncid, id_latv, dum2dv,count=(/maxinds(1),maxinds(2),1/))
+   call netcdf_err(error, 'WRITING XLAT_V RECORD' )
  endif
- deallocate(longitude_u,latitude_u,longitude_v,latitude_v)
+
+!  longitude on v grid
+ if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LONGITUDE V"
+ call ESMF_FieldGather(longitude_v_target_grid,dum2dv(:,:),rootPet=0, rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
+ if (localpet==0) then
+   error = nf90_put_var( ncid, id_lonv, dum2dv, count=(/maxinds(1),maxinds(2),1/))
+   call netcdf_err(error, 'WRITING XLONG_V RECORD' )
+ endif
+
+! mapfac on mass grid
+
+ if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID mapfac_m"
+   call ESMF_FieldGather(mapfac_m_target_grid, dum2d, rootPet=0, rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
 
  if (localpet ==0) then
-    dum2dt(:,:,1) = MAPFAC_M
+    dum2dt(:,:,1) = dum2d
     error = nf90_put_var( ncid, id_mfm, dum2dt,count=(/i_target,j_target,1/))
     call netcdf_err(error, 'WRITING MAPFAC_M RECORD' )
  endif
 
+  if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID mapfac_u"
+   call ESMF_FieldGather(mapfac_u_target_grid, dum2du, rootPet=0,rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
+
  if (localpet ==0) then
-    dum2dtu(:,:,1) = MAPFAC_U
-    error = nf90_put_var( ncid, id_mfu, dum2dtu,count=(/ip1_target,j_target,1/))
+    dum2dtu(:,:,1) = dum2du
+    error = nf90_put_var( ncid, id_mfu, dum2dtu,count=shape(dum2dtu))
     call netcdf_err(error, 'WRITING MAPFAC_U RECORD' )
  endif
 
+ if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID mapfac_v"
+   call ESMF_FieldGather(mapfac_v_target_grid, dum2dv, rootPet=0,rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGather", error)
+
  if (localpet ==0) then
-    dum2dtv(:,:,1) = MAPFAC_V
-    error = nf90_put_var( ncid, id_mfv, dum2dtv,count=(/i_target,jp1_target,1/))
+    dum2dtv(:,:,1) = dum2dv
+    error = nf90_put_var( ncid, id_mfv, dum2dtv,count=shape(dum2dtv))
     call netcdf_err(error, 'WRITING MAPFAC_V RECORD' )
  endif
-
- deallocate(MAPFAC_M,MAPFAC_U,MAPFAC_V)
 
 !  z_s
 
@@ -954,9 +994,6 @@ if (localpet == 0) then
    vs = substr(valid_time(1,1),18,19)
    xtime_dt = datetime(sy,sm,sd,sh,smi,ss) - datetime(vy,vm,vd,vh,vmi,vs)
 
-   print*, trim(start_time)
-   print*, trim(valid_time(1,1))
-   print*, xtime_dt%total_seconds()
    error = nf90_put_var( ncid, id_xtime, (/xtime_dt%total_seconds()/60.0/), count=(/1/))
    call netcdf_err(error, 'WRITING XTIME RECORD' )
  endif
@@ -1113,7 +1150,6 @@ if (localpet == 0) then
 
                 if (wrf_mod_vars .and. trim(varname)=='P_HYD') then
                     dum1d(1) = maxval(dum3d)
-                    print*, "initial p_top = ", dum1d(1)
                     do i = 1,i_target
                     do j = 1,j_target
                       if (dum3d(i,j,nz_input) >= 10.0_esmf_kind_r8) then
@@ -1121,7 +1157,6 @@ if (localpet == 0) then
                       endif
                     enddo
                     enddo
-                    print*, "P_TOP", dum1d(1)
                     error = nf90_put_var( ncid, id_ptop, dum1d, &
                                         count=(/1/))
                     call netcdf_err(error, 'WRITING RECORD' )
@@ -1190,6 +1225,7 @@ if (localpet == 0) then
 
  deallocate(dum3d, dum3dp1, dum3dt, dum3dp1t, dum1d)
  deallocate(id_vars2, id_vars3_nz, id_vars3_nzp1, id_vars_soil)
+ deallocate(dum2du,dum2dtu,dum2dv,dum2dtv)
 
  if (allocated(target_hist_longname_2d_cons)) deallocate(target_hist_longname_2d_cons)
  if (allocated(target_hist_longname_2d_nstd)) deallocate(target_hist_longname_2d_nstd)
