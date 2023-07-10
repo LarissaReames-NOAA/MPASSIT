@@ -148,11 +148,11 @@
    known_lon = ref_lon
    known_x = ref_x
    known_y = ref_y
-   i_target = nx
-   j_target = ny
+   i_target = nx-1
+   j_target = ny-1
  
    map_proj = to_upper(target_grid_type)
-  
+   print*, map_proj 
    ! Assign parameters to module variables
    if ((index(map_proj, 'LAMBERT') /= 0) .and. &
       (len_trim(map_proj) == len('LAMBERT'))) then
@@ -188,8 +188,8 @@
             "a global grid is assumed. Please set dx/dy if a regional grid is desired, "//&
             "or change is_regional to .false. if a global grid is desired.", ERROR_CODE)
         endif
-        dlondeg = 360. / (nx)   ! Here, we really do not want e_we-s_we+1
-        dlatdeg = 180. / (ny)   ! Here, we really do not want e_we-s_we+1
+        dlondeg = 360. / (i_target)   ! Here, we really do not want e_we-s_we+1
+        dlatdeg = 180. / (j_target)   ! Here, we really do not want e_we-s_we+1
         known_x = 1.
         known_y = 1.
         known_lon = stand_lon + dlondeg/2.
@@ -224,8 +224,9 @@
   
   ! If the user hasn't supplied a known_x and known_y, assume the center of domain 1
   if (known_x == NAN .and. known_y == NAN) then
-    known_x = i_target / 2.
-    known_y = j_target / 2.
+    known_x = real(i_target+1) / 2.
+    known_y = real(j_target+1) / 2.
+    print*, known_x, known_y
   else if (known_x == NAN .or. known_y == NAN) then
     call error_handler('In namelist, neither or both of ref_x, ref_y must be specified.',ERROR_CODE)
   end if 

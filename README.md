@@ -78,6 +78,8 @@ file_target_grid : Full path of WRF file containing target grid information,
                    supported types: wrfout, wrfinput, geo_em 
 		   (Valid only if target_grid_type='file')
 
+is_regional: Whether the target grid is regional or not (default:.true.)
+
 output_file : Full path of output file
 
 interp_diag : Whether to interpolate fields from the diag file (T/F)

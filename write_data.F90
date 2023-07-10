@@ -25,20 +25,19 @@
  use program_setup, only           : interp_diag, interp_hist, &
                                      wrf_mod_vars, truelat1,truelat2, &
                                      stand_lon,proj_code,map_proj_char, &
-                                     i_target, j_target
+                                     i_target, j_target, dx, &
+                                     ref_lat, ref_lon, pole_lat, &
+                                     pole_lon
 
  use model_grid, only              : target_grid, &
                                      ip1_target, jp1_target, &
                                      nz_input, nzp1_input, &
                                      nsoil_input, &
-                                     dx, start_time, &
+                                     start_time, &
                                      config_dt, &
                                      strlen, valid_time, &
                                      lsm_scheme, mp_scheme, &
                                      conv_scheme, &
-                                     cen_lat, cen_lon,  &
-                                     moad_cen_lat, &
-                                     pole_lat, pole_lon, &
                                      longitude_target_grid, &
                                      latitude_target_grid, &
                                      longitude_u_target_grid, &
@@ -211,10 +210,10 @@ if (localpet == 0) then
    error = nf90_put_att(ncid, NF90_GLOBAL, 'CU_PHYSICS', conv_scheme)
    call netcdf_err(error, 'DEFINING CU PHYSICS GLOBAL ATTRIBUTE')
 
-   error = nf90_put_att(ncid, NF90_GLOBAL, 'CEN_LAT', cen_lat)
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'CEN_LAT', ref_lat)
    call netcdf_err(error, 'DEFINING CEN_LAT GLOBAL ATTRIBUTE')
 
-   error = nf90_put_att(ncid, NF90_GLOBAL, 'CEN_LON', cen_lon)
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'CEN_LON', ref_lon)
    call netcdf_err(error, 'DEFINING CEN_LON GLOBAL ATTRIBUTE')
 
    error = nf90_put_att(ncid, NF90_GLOBAL, 'TRUELAT1', truelat1)
@@ -223,7 +222,7 @@ if (localpet == 0) then
    error = nf90_put_att(ncid, NF90_GLOBAL, 'TRUELAT2', truelat2)
    call netcdf_err(error, 'DEFINING TRUELAT2 GLOBAL ATTRIBUTE')
 
-   error = nf90_put_att(ncid, NF90_GLOBAL, 'MOAD_CEN_LAT', cen_lat)
+   error = nf90_put_att(ncid, NF90_GLOBAL, 'MOAD_CEN_LAT', ref_lat)
    call netcdf_err(error, 'DEFINING MOAD_CEN_LAT GLOBAL ATTRIBUTE')
 
    error = nf90_put_att(ncid, NF90_GLOBAL, 'STAND_LON', stand_lon)

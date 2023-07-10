@@ -29,8 +29,8 @@
                                            !< number of input grid atm layer interfaces
  integer, public                        :: nsoil_input
                                            !< number of input soil levels
- real, public                           :: dx
-                                           !< grid size (m) of target grid
+ !real, public                           :: dx
+ !                                          !< grid size (m) of target grid
  character(50), public                  :: start_time
                                            !< simulation start time input data
  character(20), public,allocatable      :: valid_time(:,:)
@@ -45,16 +45,16 @@
                                            !< microphysics scheme input data
  integer, public                        :: conv_scheme
                                            !< convection scheme input data
- real, public                           :: cen_lat
-                                           !< target grid projection center latitude
- real, public                           :: cen_lon
-                                           !< target grid projection center longitude
- real, public                           :: moad_cen_lat
-                                           !< target grid moad center latitude
- real, public                           :: pole_lat
-                                           !< target grid projection pole latitude
- real, public                           :: pole_lon
-                                           !< target grid projection pole longitude
+ !real, public                           :: cen_lat
+ !                                          !< target grid projection center latitude
+ !real, public                           :: cen_lon
+ !                                          !< target grid projection center longitude
+ !real, public                           :: moad_cen_lat
+ !                                          !< target grid moad center latitude
+ !real, public                           :: pole_lat
+ !                                          !< target grid projection pole latitude
+ !real, public                           :: pole_lon
+ !                                          !< target grid projection pole longitude
  integer, public                        :: ip1_target
                                            !< ip1_target plus 1
  integer, public                        :: jp1_target
@@ -990,7 +990,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
  enddo
  
  ! Define some extra projection-related values 
- call xytoll(i_target/2.0,j_target/2.0,cen_lat,cen_lon,M)
+ call xytoll(i_target/2.0,j_target/2.0,ref_lat,ref_lon,M)
 
  nullify(lon_src_ptr)
  nullify(lat_src_ptr)
@@ -1066,10 +1066,10 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
  jp1_target = j_target + 1
 
  if (localpet==0) print*, '- READING GLOBAL ATTRIBUTES'
- error = nf90_get_att(ncid, NF90_GLOBAL, 'CEN_LAT', cen_lat)
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'CEN_LAT', ref_lat)
  call netcdf_err(error, 'GETTING CEN_LAT GLOBAL ATTRIBUTE')
 
- error = nf90_get_att(ncid, NF90_GLOBAL, 'CEN_LON', cen_lon)
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'CEN_LON', ref_lon)
  call netcdf_err(error, 'GETTING CEN_LON GLOBAL ATTRIBUTE')
 
  error = nf90_get_att(ncid, NF90_GLOBAL, 'TRUELAT1', truelat1)
@@ -1078,7 +1078,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
  error = nf90_get_att(ncid, NF90_GLOBAL, 'TRUELAT2', truelat2)
  call netcdf_err(error, 'GETTING TRUELAT2 GLOBAL ATTRIBUTE')
 
- error = nf90_get_att(ncid, NF90_GLOBAL, 'MOAD_CEN_LAT', cen_lat)
+ error = nf90_get_att(ncid, NF90_GLOBAL, 'MOAD_CEN_LAT', ref_lat)
  call netcdf_err(error, 'GETTING MOAD_CEN_LAT GLOBAL ATTRIBUTE')
 
  error = nf90_get_att(ncid, NF90_GLOBAL, 'STAND_LON', stand_lon)
