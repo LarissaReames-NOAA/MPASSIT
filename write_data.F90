@@ -1,5 +1,5 @@
 
- module write_data
+module write_data
 
  use program_setup, only   : output_file
  use datetime_module, only: datetime, timedelta, clock
@@ -7,7 +7,7 @@
 
  public :: write_to_file
 
- contains
+contains
 
 !> Write data on the target grid
 !!
@@ -15,7 +15,7 @@
 !! @param[in] localpet  ESMF local persistent execution thread
 !! @author Larissa Reames CIWRO/NOAA/NSSL
 
- subroutine write_to_file(localpet)
+  subroutine write_to_file(localpet)
 
  use esmf
  use netcdf
@@ -1200,9 +1200,9 @@ if (localpet == 0) then
 
  if (localpet == 0) error = nf90_close(ncid)
 
- end subroutine write_to_file
+  end subroutine write_to_file
 
- subroutine create_stagger(array_in,nz_in, ny_in, nx_in,  &
+  subroutine create_stagger(array_in,nz_in, ny_in, nx_in,  &
                             nz_out, ny_out, nx_out, stag_dim, &
                             array_out)
     use esmf
@@ -1232,9 +1232,9 @@ if (localpet == 0) then
             enddo
         endif
     enddo
- end subroutine create_stagger
+  end subroutine create_stagger
 
- elemental function substr( s, a, b ) result( val )
+    elemental function substr( s, a, b ) result( val )
         character(*), intent(in) :: s
         integer,      intent(in) :: a, b
         character(len(s)) :: res
