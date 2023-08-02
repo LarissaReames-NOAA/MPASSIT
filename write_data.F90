@@ -56,12 +56,14 @@
                                      target_hist_bundle_2d_nstd, &
                                      target_hist_bundle_3d_nz, &
                                      target_hist_bundle_3d_nzp1, &
+                                     target_hist_bundle_3d_vert, &
                                      target_hist_bundle_soil, &
                                      n_hist_fields_2d_patch, &
                                      n_hist_fields_2d_cons, &
                                      n_hist_fields_2d_nstd, &
                                      n_hist_fields_3d_nz, &
                                      n_hist_fields_3d_nzp1, &
+                                     n_hist_fields_3d_vert, &
                                      n_hist_fields_soil, &
                                      target_diag_units, &
                                      target_hist_units_2d_cons, &
@@ -69,6 +71,7 @@
                                      target_hist_units_2d_patch, &
                                      target_hist_units_3d_nzp1, &
                                      target_hist_units_3d_nz, &
+                                     target_hist_units_3d_vert, &
                                      target_hist_units_soil, &
                                      target_diag_longname, &
                                      target_hist_longname_2d_cons, &
@@ -76,6 +79,7 @@
                                      target_hist_longname_2d_patch, &
                                      target_hist_longname_3d_nzp1, &
                                      target_hist_longname_3d_nz, &
+                                     target_hist_longname_3d_vert, &
                                      target_hist_longname_soil, &
                                      diag_out_interval
 
@@ -98,7 +102,7 @@
  integer                          :: n2d, n3d, ndims
  integer                          :: sy,sm,sd,sh,smi,ss,  vy,vm,vd,vh,vmi,vs
  integer, allocatable             :: id_vars2(:), id_vars3_nz(:), id_vars3_nzp1(:), &
-                                     id_vars_soil(:)
+                                     id_vars_soil(:), id_vars3_vert(:)
  integer                          :: maxinds(2), mininds(2)
 
  real(esmf_kind_r8), allocatable  :: dum2d(:,:), dum2dt(:,:,:), &
@@ -117,6 +121,7 @@
  allocate(field_extra3(n2d))  !allocate large incase all diag fields are 3d
  allocate(id_vars3_nz(n_hist_fields_3d_nz+1))
  allocate(id_vars3_nzp1(n_hist_fields_3d_nzp1))
+ allocate(id_vars3_vert(n_hist_fields_3d_vert))
  allocate(id_vars_soil(n_hist_fields_soil))
  
  if (localpet ==0) then
@@ -829,6 +834,38 @@ if (localpet == 0) then
         enddo
         deallocate(fields)
     endif
+
+    if (n_hist_fields_3d_vert>0) then
+        allocate(fields(n_hist_fields_3d_vert))
+        call ESMF_FieldBundleGet(target_hist_bundle_3d_vert, fieldList=fields, &
+                          itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                          rc=error)
+       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+              call error_handler("IN FieldBundleGet", error)
+        do i = 1, n_hist_fields_3d_vert
+            call ESMF_FieldGet(fields(i),name=varname,rc=error)
+            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+                  call error_handler("IN FieldGet", error)
+            if (localpet==0) then
+                print*,"- DEFINE ON FILE TARGET GRID ", varname
+                error = nf90_def_var(ncid, varname, NF90_FLOAT,(/dim_lon,dim_lat,dim_z, dim_time/), id_vars3_vert(i))
+                call netcdf_err(error, 'DEFINING VAR' )
+                error = nf90_put_att(ncid, id_vars3_vert(i), "MemoryOrder", "XYZ")
+                call netcdf_err(error, 'DEFINING MEMORYORDER' )
+                error = nf90_put_att(ncid, id_vars3_vert(i), "coordinates", "XLONG XLAT XTIME")
+                call netcdf_err(error, 'DEFINING COORD' )
+                error = nf90_put_att(ncid, id_vars3_vert(i), "units", target_hist_units_3d_vert(i))
+                call netcdf_err(error, 'DEFINING UNITS' )
+                error = nf90_put_att(ncid, id_vars3_vert(i), "description", target_hist_longname_3d_vert(i))
+                call netcdf_err(error, 'DEFINING LONG_NAME' )
+                error = nf90_put_att(ncid, id_vars3_vert(i),"stagger", "")
+                call netcdf_err(error, 'DEFINING STAGGER' )
+                error = nf90_put_att(ncid, id_vars3_vert(i),"FieldType", 104)
+                call netcdf_err(error, 'DEFINING FieldType' )
+            endif
+        enddo
+        deallocate(fields)
+    endif
    endif !write hist
 
  if (localpet==0) then
@@ -1220,10 +1257,35 @@ if (localpet == 0) then
      enddo
      deallocate(fields)
  endif
+  !    3d hist fields iniitially defined on vertices
 
+ if (interp_hist .and. n_hist_fields_3d_vert>0) then
+ allocate(fields(n_hist_fields_3d_vert))
+ if (localpet==0) print*, "Loop writing over ", n_hist_fields_3d_vert, "3-d vert vars"
+ call ESMF_FieldBundleGet(target_hist_bundle_3d_vert, fieldList=fields, &
+                          itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                          rc=error)
+   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+              call error_handler("IN FieldBundleGet", error)
+  do i = 1, n_hist_fields_3d_vert
+      call ESMF_FieldGet(fields(i), name=varname, rc=error)
+        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+          call error_handler("IN FieldGet", error)
+      if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID ",trim(varname)
+        call ESMF_FieldGather(fields(i), dum3d, rootPet=0, rc=error)
+        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+          call error_handler("IN FieldGather", error)
+    if (localpet==0) then
+        print*, trim(varname), minval(dum3d), maxval(dum3d)
+        dum3dt(:,:,:,1) = dum3d
+        error = nf90_put_var( ncid, id_vars3_vert(i),dum3dt,count=(/i_target,j_target,nz_input,1/))
+        call netcdf_err(error, 'WRITING RECORD' )
+    endif
+  enddo
+ endif
 
  deallocate(dum3d, dum3dp1, dum3dt, dum3dp1t, dum1d)
- deallocate(id_vars2, id_vars3_nz, id_vars3_nzp1, id_vars_soil)
+ deallocate(id_vars2, id_vars3_nz, id_vars3_nzp1, id_vars3_vert,id_vars_soil)
  deallocate(dum2du,dum2dtu,dum2dv,dum2dtv)
 
  if (allocated(target_hist_longname_2d_cons)) deallocate(target_hist_longname_2d_cons)
@@ -1231,12 +1293,14 @@ if (localpet == 0) then
  if (allocated(target_hist_longname_2d_patch)) deallocate(target_hist_longname_2d_patch)
  if (allocated(target_hist_longname_3d_nz)) deallocate(target_hist_longname_3d_nz)
  if (allocated(target_hist_longname_3d_nzp1)) deallocate(target_hist_longname_3d_nzp1)
+ if (allocated(target_hist_longname_3d_vert)) deallocate(target_hist_longname_3d_vert)
  if (allocated(target_diag_longname)) deallocate(target_diag_longname)
  if (allocated(target_hist_units_2d_cons)) deallocate(target_hist_units_2d_cons)
  if (allocated(target_hist_units_2d_nstd)) deallocate(target_hist_units_2d_nstd)
  if (allocated(target_hist_units_2d_patch))  deallocate(target_hist_units_2d_patch)
  if (allocated(target_hist_units_3d_nz)) deallocate(target_hist_units_3d_nz)
  if (allocated(target_hist_units_3d_nzp1))  deallocate(target_hist_units_3d_nzp1)
+ if (allocated(target_hist_units_3d_vert)) deallocate(target_hist_units_3d_vert)
  if (allocated(target_diag_units)) deallocate(target_diag_units)
 
  if (localpet == 0) error = nf90_close(ncid)

@@ -65,7 +65,9 @@
  integer, allocatable, public           :: nodeIDs(:)
                                             !< IDs of the nodes on present PET
  integer, public                        :: nCellsPerPET
-                                            !< Number of cells on this PET
+                                            !< Number of cells on this PET 
+ integer, public                        :: nNodesPerPET
+                                           !< Number of nodes on this PET
 
  type(esmf_mesh),  public               :: input_grid
                                            !< input grid esmf grid object
@@ -133,6 +135,11 @@
                                           !< number of 2d fields read from the hist file
                                           !< to use with nearest source to destination
                                           !< regridding
+ integer, public                       :: n_hist_fields_3d_vert
+                                          !< number of 3d fields read from the hist file
+                                          !< to be defined on input grid vertices and 
+                                          !< regridded with bilinear interpolation to 
+                                          !< target grid cells 
  integer, public                       :: n_hist_fields_3d_nz
                                           !< number of 3d fields read from the hist file
                                           !< with vertical dimension nVertLevels
@@ -150,6 +157,7 @@
                                           target_hist_names_2d_patch(:), &
                                           target_hist_names_3d_nzp1(:), &
                                           target_hist_names_3d_nz(:), &
+                                          target_hist_names_3d_vert(:), &
                                           target_hist_names_soil(:)
                                           !< Arrays to hold target field names
  character(50), allocatable, public    :: target_diag_units(:), &
@@ -158,6 +166,7 @@
                                           target_hist_units_2d_patch(:), &
                                           target_hist_units_3d_nzp1(:), &
                                           target_hist_units_3d_nz(:), &
+                                          target_hist_units_3d_vert(:), &
                                           target_hist_units_soil(:)
                                           !< Arrays to hold target field units
  character(200), allocatable, public   :: target_diag_longname(:), &
@@ -166,6 +175,7 @@
                                           target_hist_longname_2d_patch(:), &
                                           target_hist_longname_3d_nzp1(:), &
                                           target_hist_longname_3d_nz(:), &
+                                          target_hist_longname_3d_vert(:), &
                                           target_hist_longname_soil(:)
                                           !< Arrays to hold target field longname
  type(esmf_fieldbundle), public        :: input_hist_bundle_2d_patch, &
@@ -173,6 +183,7 @@
                                           input_hist_bundle_2d_nstd, &
                                           input_hist_bundle_3d_nz, &
                                           input_hist_bundle_3d_nzp1, &
+                                          input_hist_bundle_3d_vert, &
                                           input_hist_bundle_soil
                                           !< bundles to hold input hist fields
  type(esmf_fieldbundle), public        :: target_hist_bundle_2d_patch, &
@@ -180,6 +191,7 @@
                                           target_hist_bundle_2d_nstd, &
                                           target_hist_bundle_3d_nz, &
                                           target_hist_bundle_3d_nzp1, &
+                                          target_hist_bundle_3d_vert, &
                                           target_hist_bundle_soil
                                           !< bundles to hold target hist fields
 
@@ -216,7 +228,8 @@
                                           temp2, temp3, temp(1), clb(1), cub(1)
  integer, allocatable                  :: elemTypes2(:), vertOnCell(:,:), &
                                           nodesPET(:), nodeIDs_temp(:), &
-                                          elementConn_temp(:), elementConn(:)
+                                          elementConn_temp(:), elementConn(:), &
+                                          unique_nodes(:), node_pets(:)
  real(esmf_kind_r8), allocatable       :: latCell(:), lonCell(:), &
                                           latVert(:), lonVert(:), &
                                           nodeCoords(:), &
@@ -448,7 +461,7 @@
 
 
  !-----------------------------------------------------------------------
- ! Create lat/lon arrays on input grid
+ ! Create lat/lon arrays on input element grid
  !-----------------------------------------------------------------------
 
  if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID CELL LATITUDE."
@@ -480,11 +493,63 @@
 
  j = 1
  do i = cell_start, cell_end
+    data_1d(j) = latCell(i)
+    data_1d2(j) = lonCell(i)
+    j = j + 1
+ enddo
+
+ nullify(data_1d,data_1d2)
+
+ !-----------------------------------------------------------------------
+ ! Create lat/lon arrays on input node grid
+ !-----------------------------------------------------------------------
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID VERTEX LATITUDE."
+ node_latitude_input_grid = ESMF_FieldCreate(input_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   meshloc=ESMF_MESHLOC_NODE, &
+                                   name="input_grid_node_latitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID VERTEX LONGITUDE."
+ node_longitude_input_grid = ESMF_FieldCreate(input_grid, &
+                                   typekind=ESMF_TYPEKIND_R8, &
+                                   meshloc=ESMF_MESHLOC_NODE, &
+                                   name="input_grid_node_longitude", &
+                                   rc=error)
+ if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldCreate", error)
+
+ call ESMF_FieldGet(node_latitude_input_grid, farrayPtr=data_1d,rc = rc)
+  if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGet", error)
+
+ call ESMF_FieldGet(node_longitude_input_grid,farrayPtr=data_1d2, &
+                    computationalLBound=clb, computationalUBound=cub, rc=rc)
+  if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+    call error_handler("IN FieldGet", error)
+
+ !call unique_sort(nodeIDs,k,unique_nodes)
+ call ESMF_MeshGet(input_grid,numOwnedNodes=n)
+ allocate(unique_nodes(n))
+ allocate(node_pets(k))
+ call ESMF_MeshGet(input_grid,nodeOwners=node_pets)
+ j = 1
+ do i = 1,k
+   if (node_pets(i)==localpet) then
+     unique_nodes(j) = nodeIDs(k)
+     j = j + 1
+   endif
+ enddo
+ j = 1
+ do i = unique_nodes(1), unique_nodes(n)
     data_1d(j) = latVert(i)
     data_1d2(j) = lonVert(i)
     j = j + 1
  enddo
-
+ nNodesPerPET = n
  nullify(data_1d,data_1d2)
 
  if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID HGT."
@@ -1867,7 +1932,27 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
     deallocate(fields)
  endif
 
+ if (n_hist_fields_3d_vert>0) then
+    allocate(fields(n_hist_fields_3d_vert))
+    call ESMF_FieldBundleGet(input_hist_bundle_3d_vert, fieldList=fields, &
+                          itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                          rc=rc)
+    do i = 1, n_hist_fields_3d_vert
+        call ESMF_FieldDestroy(fields(i), rc=rc)
+    enddo
 
+    call ESMF_FieldBundleDestroy(input_hist_bundle_3d_vert)
+
+    call ESMF_FieldBundleGet(target_hist_bundle_3d_vert, fieldList=fields, &
+                          itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                          rc=rc)
+    do i = 1, n_hist_fields_3d_vert
+        call ESMF_FieldDestroy(fields(i), rc=rc)
+    enddo
+
+    call ESMF_FieldBundleDestroy(target_hist_bundle_3d_vert)
+    deallocate(fields)
+ endif
  call ESMF_MeshDestroy(input_grid, rc=rc)
 
  call ESMF_GridDestroy(target_grid, rc=rc)
