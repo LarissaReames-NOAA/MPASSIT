@@ -38,18 +38,21 @@
                                     input_hist_bundle_2d_nstd, &
                                     input_hist_bundle_3d_nz, &
                                     input_hist_bundle_3d_nzp1, &
+                                    input_hist_bundle_3d_vert, &
                                     input_hist_bundle_soil, &
                                     target_hist_names_2d_cons, &
                                     target_hist_names_2d_nstd, &
                                     target_hist_names_2d_patch, &
                                     target_hist_names_3d_nz, &
                                     target_hist_names_3d_nzp1, &
+                                    target_hist_names_3d_vert, &
                                     target_hist_names_soil, &
                                     target_diag_units, &
                                     target_hist_units_2d_cons, &
                                     target_hist_units_2d_nstd, &
                                     target_hist_units_2d_patch, &
                                     target_hist_units_3d_nzp1, &
+                                    target_hist_units_3d_vert, &
                                     target_hist_units_3d_nz, &
                                     target_hist_units_soil, &
                                     target_diag_longname, &
@@ -58,15 +61,19 @@
                                     target_hist_longname_2d_patch, &
                                     target_hist_longname_3d_nzp1, &
                                     target_hist_longname_3d_nz, &
+                                    target_hist_longname_3d_vert, &
                                     target_hist_longname_soil, &
                                     n_diag_fields, &
                                     n_hist_fields_2d_cons, &
                                     n_hist_fields_2d_nstd, &
                                     n_hist_fields_2d_patch, &
+                                    n_hist_fields_3d_vert, &
                                     n_hist_fields_3d_nz, &
                                     n_hist_fields_3d_nzp1, &
+                                    n_hist_fields_3d_vert, &
                                     n_hist_fields_soil, &
                                     elemIDs, nCellsPerPET, &
+                                    nNodesPerPET, &
                                     nodeIDs,diag_out_interval
 
  implicit none
@@ -689,6 +696,58 @@
      deallocate(dummy3)
      deallocate(fields)
  endif
+
+!---------------------------------------------------------------------------
+! Initialize 3d esmf atmospheric fields with nVertLevels vertical dimension and
+! defined on unstructured mesh nodes
+!---------------------------------------------------------------------------
+
+ if (n_hist_fields_3d_vert > 0 ) then
+     allocate(fields(n_hist_fields_3d_vert))
+     allocate(target_hist_units_3d_vert(n_hist_fields_3d_vert))
+    allocate(target_hist_longname_3d_vert(n_hist_fields_3d_vert))
+     call ESMF_FieldBundleGet(input_hist_bundle_3d_vert, fieldList=fields, &
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN FieldBundleGet", rc)
+
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN MeshGet", rc)
+
+     allocate(dummy3(nz_input,nVert_input,1))
+
+     do i = 1,n_hist_fields_3d_vert
+
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN FieldGet", rc)
+
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN FieldGet", rc)
+
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy3)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_3d_vert(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_3d_vert(i))
+        call netcdf_err(error, 'reading field long_name' )
+
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nNodesPerPET
+            varptr2(j,:) = dummy3(:,NodeIDs(j),1)
+        enddo
+
+        nullify(varptr2)
+     enddo
+     deallocate(dummy3)
+     deallocate(fields)
+ endif
  
 
  error = nf90_close(ncid)
@@ -714,18 +773,22 @@
                                      input_hist_names_3d_nz(:), &
                                      input_hist_names_soil(:), &
                                      input_hist_names_3d_nzp1(:), &
+                                     input_hist_names_3d_vert(:), &
                                      target_hist_names_2d(:), &
                                      target_hist_names_3d(:)
     type(esmf_field), allocatable :: fields(:)
-    character(50)                 :: cons_vars(2), nstd_vars(4), nzp1_vars(2)
+    character(50)                 :: cons_vars(2), nstd_vars(4), nzp1_vars(2), &
+                                     vert_vars(1)
     character(50)                 :: fname
     
     cons_vars = (/'snow ','snowh'/)
     nstd_vars = (/'ivgtyp  ','isltyp  ', 'xland   ','landmask'/)
     nzp1_vars = (/'zgrid','w    '/)
+    vert_vars = (/'vorticity'/)
     n_hist_fields_2d_cons = 0
     n_hist_fields_2d_nstd = 0
     n_hist_fields_2d_patch = 0
+    n_hist_fields_3d_vert = 0
     n_hist_fields_3d_nz = 0
     n_hist_fields_3d_nzp1 = 0
     
@@ -777,6 +840,8 @@
     do i = 1, n_hist_fields_3d
         if (any(nzp1_vars == input_hist_names_3d(i))) then
             n_hist_fields_3d_nzp1 = n_hist_fields_3d_nzp1 + 1
+        elseif (any(vert_vars == input_hist_names_3d(i))) then
+            n_hist_fields_3d_vert = n_hist_fields_3d_vert + 1
         else
             n_hist_fields_3d_nz = n_hist_fields_3d_nz + 1
         endif
@@ -784,17 +849,23 @@
     
     allocate(input_hist_names_3d_nz(n_hist_fields_3d_nz))
     allocate(input_hist_names_3d_nzp1(n_hist_fields_3d_nzp1))
+    allocate(input_hist_names_3d_vert(n_hist_fields_3d_vert))
     allocate(target_hist_names_3d_nz(n_hist_fields_3d_nz))
     allocate(target_hist_names_3d_nzp1(n_hist_fields_3d_nzp1))
+    allocate(target_hist_names_3d_vert(n_hist_fields_3d_vert))
     
     j = 0
     k = 0
+    n = 0
     do i = 1, n_hist_fields_3d
         if (any(nzp1_vars == input_hist_names_3d(i))) then
             j = j+1
             input_hist_names_3d_nzp1(j) = input_hist_names_3d(i)
             target_hist_names_3d_nzp1(j) = target_hist_names_3d(i)
-            
+        elseif (any(vert_vars == input_hist_names_3d(i))) then
+            n = n + 1
+            input_hist_names_3d_vert(n) = input_hist_names_3d(i)
+            target_hist_names_3d_vert(n) = target_hist_names_3d(i)
         else
             k = k+1 
             input_hist_names_3d_nz(k) = input_hist_names_3d(i)
@@ -944,6 +1015,30 @@
             
         deallocate(fields)
     endif
+
+    if (n_hist_fields_3d_vert > 0) then
+        allocate(fields(n_hist_fields_3d_vert))
+        do i = 1, n_hist_fields_3d_vert
+
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_vert(i)
+
+            fields(i) = ESMF_FieldCreate(input_grid, &
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_NODE, &
+                                name=input_hist_names_3d_vert(i), &
+                                ungriddedLBound=(/1/), &
+                                ungriddedUBound=(/nz_input/), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+
+        input_hist_bundle_3d_vert = ESMF_FieldBundleCreate(fieldList=fields, &
+                                        name="input hist 3d vertex data", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+
+        deallocate(fields)
+    endif
     
     deallocate(input_hist_names_2d, target_hist_names_3d)
     deallocate(input_hist_names_2d_cons)
@@ -951,6 +1046,7 @@
     deallocate(input_hist_names_2d_patch)
     deallocate(input_hist_names_3d_nz)
     deallocate(input_hist_names_3d_nzp1)
+    deallocate(input_hist_names_3d_vert)
     deallocate(input_hist_names_soil)
     
  
