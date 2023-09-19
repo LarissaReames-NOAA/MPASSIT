@@ -35,7 +35,7 @@
  character(len=500), public      :: target_grid_type      !< Grid type to interpolate data to
                                                           !< Valid options: 'file', 'lambert',
                                                           !< 'mercator','polar',lat-lon'     
-                                                                                                                                                                 
+ character(len=500), public      :: block_decomp_file = "NULL"  !< Full path to MPAS grid-specific block decomposition file                                                                                                                                                                 
  !! These entries are only valid when target_grid_type is not 'file'
  logical, public                 :: is_regional = .true.  !< Is the output grid regional or global? 
                                                           !< Default: True   
@@ -44,8 +44,10 @@
  real, public                    :: truelat1 = NAN        !< First true latitude (all projections)
  real, public                    :: truelat2 = NAN        !< Second true latitude (LCC only)
  real, public                    :: stand_lon = NAN       !< Longitude parallel to y-axis (-180->180E)
- real, public                    :: dx = NAN              !< Grid cell east-west dimension(meters)
- real, public                    :: dy = NAN              !< Grid cell north-south dimension(meters)
+ real, public                    :: dx = NAN              !< Grid cell east-west dimension(meters or deg for 
+                                                          !< target_grid_type='lat-lon')
+ real, public                    :: dy = NAN              !< Grid cell north-south dimension(meters or deg for 
+                                                          !< target_grid_type='lat-lon')
  real, public                    :: ref_lat               !< Latitude of reference point
  real, public                    :: ref_lon               !< Longitude of reference point
  real, public                    :: ref_x                 !< Grid-relative e-w index of reference point
@@ -90,7 +92,7 @@
  character(:), allocatable              :: filename_to_use
  character(len=500)                     :: map_proj
  integer                                :: unit_to_use
- logical                                :: esmf_log
+ logical                                :: esmf_log,decomp_exists
 
  integer                                :: is, ie, ierr
  
@@ -101,7 +103,7 @@
  namelist /config/ grid_file_input_grid, diag_file_input_grid, hist_file_input_grid, &
             file_target_grid, output_file, interp_diag, interp_hist, &
             wrf_mod_vars, esmf_log,target_grid_type,nx,ny,dx,dy,ref_lat,ref_lon,ref_x,ref_y,&
-            truelat1,truelat2,stand_lon,is_regional,pole_lat,pole_lon, interp_as_bundle
+            truelat1,truelat2,stand_lon,is_regional,pole_lat,pole_lon, interp_as_bundle,block_decomp_file
 
   ref_x = NAN
   ref_y = NAN
@@ -140,6 +142,15 @@
    LogType = ESMF_LOGKIND_NONE
  endif 
  
+ if (block_decomp_file=='NULL') then
+   call error_handler("block_decomp_file IS REQUIRED BUT IS MISSING IN NAMELIST.", -1)
+ else
+   inquire(file=block_decomp_file, exist=decomp_exists)
+   if (.not. decomp_exists) then
+      call error_handler("block_decomp_file DOES NOT EXIST.",-1)
+   endif
+ endif
+ 
  if (trim(target_grid_type) .ne. 'file') then
    dxkm = dx
    dykm = dy
@@ -152,7 +163,7 @@
    j_target = ny-1
  
    map_proj = to_upper(target_grid_type)
-   print*, map_proj 
+   !print*, map_proj 
    ! Assign parameters to module variables
    if ((index(map_proj, 'LAMBERT') /= 0) .and. &
       (len_trim(map_proj) == len('LAMBERT'))) then
@@ -208,7 +219,7 @@
         dlondeg = dx
         dxkm = dlondeg * EARTH_RADIUS_M * PI * 2.0 / 360.0
         dykm = dlatdeg * EARTH_RADIUS_M * PI * 2.0 / 360.0
-        print*, "dxkm, dykm = ", dxkm, dykm
+        !print*, "dxkm, dykm = ", dxkm, dykm
         if (known_lat == NAN .or. known_lon == NAN) then
            call error_handler('For lat-lon projection, if dx/dy are specified, '// &
                     'a regional domain is assumed, and a ref_lat,ref_lon must also be specified',ERROR_CODE)
@@ -226,7 +237,7 @@
   if (known_x == NAN .and. known_y == NAN) then
     known_x = real(i_target+1) / 2.
     known_y = real(j_target+1) / 2.
-    print*, known_x, known_y
+   ! print*, known_x, known_y
   else if (known_x == NAN .or. known_y == NAN) then
     call error_handler('In namelist, neither or both of ref_x, ref_y must be specified.',ERROR_CODE)
   end if 
