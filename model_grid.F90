@@ -2168,9 +2168,8 @@ end subroutine unique_sort
    character(200) :: line
 
    INQUIRE(FILE=file, EXIST=file_exists)
-   write(6,*) file_exists
-
-   if (.not. file_exists) then
+   
+  if (.not. file_exists) then
      call error_handler("BLOCK DECOMP FILE DOES NOT EXIST",-1)
    endif
 
@@ -2189,9 +2188,6 @@ end subroutine unique_sort
      nlines = nlines+1
    enddo
    if (nlines /= ncells) call error_handler("BLOCK DECOMPOSITION FILE CONTAINS MORE CELLS THAN INPUT GRID", -1)
-
-  !if ( nfields == 0) call error_handler("VARLIST FILE IS EMPTY.", -1) ! ok if
-  !there are no fields...
 
    allocate(myCells_temp(ncells))
   
