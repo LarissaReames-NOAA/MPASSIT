@@ -1273,8 +1273,7 @@ contains
                                 end if
                             end do
                             end do
-                            error = nf90_put_var(ncid, id_ptop, dum1d, &
-                                                 count=(/1/))
+                            error = nf90_put_var(ncid, id_ptop, dum1d, count=(/1/))
                             call netcdf_err(error, 'WRITING RECORD')
 
                             ! WRITE PB also
