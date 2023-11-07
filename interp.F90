@@ -38,12 +38,14 @@
                                     input_hist_bundle_2d_patch, &
                                     input_hist_bundle_3d_nz, &
                                     input_hist_bundle_3d_nzp1, &
+                                    input_hist_bundle_3d_vert, &
                                     input_hist_bundle_soil, &
                                     target_hist_bundle_2d_patch, &
                                     target_hist_bundle_2d_cons, &
                                     target_hist_bundle_2d_nstd, &
                                     target_hist_bundle_3d_nz, &  
                                     target_hist_bundle_3d_nzp1, &
+                                    target_hist_bundle_3d_vert, &
                                     target_hist_bundle_soil, &
                                     target_diag_names, &
                                     target_hist_names_2d_cons, &
@@ -51,6 +53,7 @@
                                     target_hist_names_2d_patch, &
                                     target_hist_names_3d_nz, &
                                     target_hist_names_3d_nzp1, &
+                                    target_hist_names_3d_vert, &
                                     target_hist_names_soil, &
                                     n_diag_fields, nCellsPerPET, &
                                     n_hist_fields_2d_cons, &
@@ -58,6 +61,7 @@
                                     n_hist_fields_2d_patch, &
                                     n_hist_fields_3d_nz, &
                                     n_hist_fields_3d_nzp1, &
+                                    n_hist_fields_3d_vert, &
                                     n_hist_fields_soil
 
  implicit none
@@ -248,6 +252,25 @@
         call error_handler("IN FieldBundleRegridStore", rc)
         
        call ESMF_FieldBundleRegrid(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, rh_patch, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleRegrid", rc)
+    endif
+
+    
+    if (n_hist_fields_3d_vert>0) then
+       if (localpet==0) print*,"- CREATE HIST BUNDLE VERT BILINEAR REGRID ROUTEHANDLE"
+
+       call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_vert,target_hist_bundle_3d_vert, &
+                                         regridmethod=method, &
+                                         routehandle=rh_patch, &
+                                         srcTermProcessing=isrctermprocessing, &
+                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                         rc=rc)
+
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldBundleRegridStore", rc)
+
+       call ESMF_FieldBundleRegrid(input_hist_bundle_3d_vert, target_hist_bundle_3d_vert, rh_patch, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldBundleRegrid", rc)
     endif
@@ -503,9 +526,32 @@
             call error_handler("IN FieldBundleCreate", rc)
         deallocate(fields)
     endif
+
+    if (n_hist_fields_3d_vert>0) then
+        allocate(fields(n_hist_fields_3d_vert))
+        do i = 1, n_hist_fields_3d_vert
+            if (localpet==0) print*, "- INIT FIELD ", target_hist_names_3d_vert(i)
+            fields(i) = ESMF_FieldCreate(target_grid, &
+                                typekind=ESMF_TYPEKIND_R8, &
+                                staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                name=target_hist_names_3d_vert(i), &
+                                ungriddedLBound=(/1/), &
+                                ungriddedUBound=(/nz_input/), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldCreate", rc)
+        enddo
+
+
+        target_hist_bundle_3d_vert = ESMF_FieldBundleCreate(fieldList=fields, &
+                                        name="target init 3d nz vert data", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldBundleCreate", rc)
+        deallocate(fields)
+    endif
+
     deallocate(target_hist_names_2d_cons, target_hist_names_2d_nstd)
     deallocate(target_hist_names_2d_patch, target_hist_names_3d_nz)
-    deallocate(target_hist_names_3d_nzp1)
+    deallocate(target_hist_names_3d_nzp1, target_hist_names_3d_vert)
  
  end subroutine init_target_hist_fields
 
