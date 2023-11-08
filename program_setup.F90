@@ -142,9 +142,10 @@
    LogType = ESMF_LOGKIND_NONE
  endif 
  
- if (block_decomp_file=='NULL') then
-   call error_handler("block_decomp_file IS REQUIRED BUT IS MISSING IN NAMELIST.", -1)
- else
+ !if (block_decomp_file=='NULL') then
+   !call error_handler("block_decomp_file IS REQUIRED BUT IS MISSING IN NAMELIST.", -1)
+ !else
+ if(.not. block_decomp_file=='NULL') then
    inquire(file=block_decomp_file, exist=decomp_exists)
    if (.not. decomp_exists) then
       call error_handler("block_decomp_file DOES NOT EXIST.",-1)

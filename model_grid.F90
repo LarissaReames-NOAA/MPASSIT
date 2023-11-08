@@ -379,7 +379,22 @@
 
  nVertThis = 0
  k = 0
- call read_block_decomp_file(localpet,block_decomp_file,nCells,elemIDs,nCellsPerPET)
+ if (block_decomp_file=='NULL') then
+     nCellsPerPET = ceiling(real(nCells)/real(npets))
+     cell_start = localpet*nCellsPerPET+1
+     cell_end = min(localpet*nCellsPerPET+nCellsPerPET,nCells)
+     nCellsPerPET = cell_end - cell_start + 1
+     allocate(elemIDs(nCellsPerPET))
+!$OMP PARALLEL DO $PRIVATE(i,j)
+     do i = cell_start, cell_end
+         j = i - cell_start + 1
+         elemIDs(j) = i
+     enddo
+!$OMP END PARALLEL DO
+ else
+     call read_block_decomp_file(localpet,block_decomp_file,nCells,elemIDs,nCellsPerPET)
+ endif
+
  allocate(elementConn_temp(maxEdges*nCellsPerPET))
  allocate(elemCoords(2*nCellsPerPET))
  allocate(elemTypes2(nCellsPerPET))
