@@ -77,6 +77,9 @@ elif [[ -L /usrx && "$( readlink /usrx 2> /dev/null )" =~ dell ]] ; then
     fi
     target=wcoss_dell_p3
     module purge
+elif [[ "$(hostname)" == derecho* ]]; then
+    target=derecho
+    module purge
 elif [[ -d /glade ]] ; then
     # We are on NCAR Cheyenne
     if ( ! eval module help > /dev/null 2>&1 ) ; then
