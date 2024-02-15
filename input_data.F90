@@ -146,11 +146,11 @@ contains
         call ESMF_FieldBundleGet(input_diag_bundle, fieldList=fields, &
                                  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                  rc=rc)
-        if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+        if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
             call error_handler("IN FieldBundleGet", rc)
 
         call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-        if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+        if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
             call error_handler("IN MeshGet", rc)
 
         allocate (dummy(nCells_input))
@@ -159,7 +159,7 @@ contains
         do i = 1, n_diag_fields
 
             call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldGet", rc)
 
             if (localpet == 0) print *, "- READ ", trim(vname)
@@ -169,7 +169,7 @@ contains
             call netcdf_err(error, 'reading variable dims')
             if (ndims == 2) then
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
                 error = nf90_get_var(ncid, id_var, dummy)
                 call netcdf_err(error, 'reading field')
@@ -181,7 +181,7 @@ contains
                 nullify (varptr)
             elseif (ndims == 3) then
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
                 error = nf90_get_var(ncid, id_var, dummy2)
                 call netcdf_err(error, 'reading field')
@@ -393,11 +393,11 @@ contains
             call ESMF_FieldBundleGet(input_hist_bundle_2d_patch, fieldList=fields, &
                                      itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                      rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", rc)
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
             allocate (dummy2(nCells_input, 1))
@@ -405,11 +405,11 @@ contains
             do i = 1, n_hist_fields_2d_patch
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
                 if (localpet == 0) print *, vname
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 if (localpet == 0) print *, "- READ ", trim(vname)
@@ -445,11 +445,11 @@ contains
             call ESMF_FieldBundleGet(input_hist_bundle_2d_cons, fieldList=fields, &
                                      itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                      rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", rc)
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
             allocate (dummy2(nCells_input, 1))
@@ -457,11 +457,11 @@ contains
             do i = 1, n_hist_fields_2d_cons
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 if (localpet == 0) print *, "- READ ", trim(vname)
@@ -496,11 +496,11 @@ contains
             call ESMF_FieldBundleGet(input_hist_bundle_2d_nstd, fieldList=fields, &
                                      itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                      rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", rc)
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
             allocate (dummy2(nCells_input, 1))
@@ -508,11 +508,11 @@ contains
             do i = 1, n_hist_fields_2d_nstd
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 if (localpet == 0) print *, "- READ ", trim(vname)
@@ -547,11 +547,11 @@ contains
             call ESMF_FieldBundleGet(input_hist_bundle_soil, fieldList=fields, &
                                      itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                      rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", rc)
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
             allocate (dummy3(nsoil_input, nCells_input, 1))
@@ -559,11 +559,11 @@ contains
             do i = 1, n_hist_fields_soil
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 if (localpet == 0) print *, "- READ ", trim(vname)
@@ -598,11 +598,11 @@ contains
             call ESMF_FieldBundleGet(input_hist_bundle_3d_nz, fieldList=fields, &
                                      itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                      rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", rc)
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
             allocate (dummy3(nz_input, nCells_input, 1))
@@ -610,11 +610,11 @@ contains
             do i = 1, n_hist_fields_3d_nz
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 if (localpet == 0) print *, "- READ ", trim(vname)
@@ -649,11 +649,11 @@ contains
             call ESMF_FieldBundleGet(input_hist_bundle_3d_nzp1, fieldList=fields, &
                                      itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                      rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", rc)
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
             allocate (dummy3(nzp1_input, nCells_input, 1))
@@ -661,11 +661,11 @@ contains
             do i = 1, n_hist_fields_3d_nzp1
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 if (localpet == 0) print *, "- READ ", trim(vname)
@@ -702,11 +702,11 @@ contains
             call ESMF_FieldBundleGet(input_hist_bundle_3d_vert, fieldList=fields, &
                                      itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                                      rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", rc)
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
             allocate (dummy3(nz_input, nVert_input, 1))
@@ -714,11 +714,11 @@ contains
             do i = 1, n_hist_fields_3d_vert
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__line__, file=__file__)) &
+                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                     call error_handler("IN FieldGet", rc)
 
                 if (localpet == 0) print *, "- READ ", trim(vname)
@@ -772,9 +772,9 @@ contains
                                          vert_vars(1)
         character(50)                 :: fname
 
-        cons_vars = (/'snow', 'snowh'/)
-        nstd_vars = (/'ivgtyp', 'isltyp', 'xland', 'landmask'/)
-        nzp1_vars = (/'zgrid', 'w'/)
+        cons_vars = (/'snow ', 'snowh'/)
+        nstd_vars = (/'ivgtyp  ', 'isltyp  ', 'xland   ', 'landmask'/)
+        nzp1_vars = (/'zgrid', 'w    '/)
         vert_vars = (/'vorticity'/)
 
         n_hist_fields_2d_cons = 0
