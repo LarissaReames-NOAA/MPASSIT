@@ -478,14 +478,14 @@ if (localpet == 0) then
         call ESMF_FieldBundleGet(target_diag_bundle, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
         do i = 1, n_diag_fields
             call ESMF_FieldGet(fields(i),name=varname,rc=error)
-            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
                   call error_handler("IN FieldGet", error)
              call ESMF_FieldGet(fields(i), dimCount=ndims, rc=rc)
-                if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+                if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
                   call error_handler("IN FieldGet", error)
 
              if (ndims==2) then
@@ -540,12 +540,12 @@ if (localpet == 0) then
         call ESMF_FieldBundleGet(target_hist_bundle_2d_cons, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
        do i = 1, n_hist_fields_2d_cons
             k = k+1
             call ESMF_FieldGet(fields(i),name=varname,rc=error)
-            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
                   call error_handler("IN FieldGet", error)
 
             if (localpet==0) print*,"- DEFINE ON FILE TARGET GRID ", varname
@@ -575,12 +575,12 @@ if (localpet == 0) then
         call ESMF_FieldBundleGet(target_hist_bundle_2d_patch, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
        do i = 1, n_hist_fields_2d_patch
             k = k+1
             call ESMF_FieldGet(fields(i),name=varname,rc=error)
-            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
                   call error_handler("IN FieldGet", error)
 
             if (localpet==0) print*,"- DEFINE ON FILE TARGET GRID ", varname
@@ -610,12 +610,12 @@ if (localpet == 0) then
         call ESMF_FieldBundleGet(target_hist_bundle_2d_nstd, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
        do i = 1, n_hist_fields_2d_nstd
             k = k+1
             call ESMF_FieldGet(fields(i),name=varname,rc=error)
-            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
                   call error_handler("IN FieldGet", error)
             field_write_2d(k) = fields(i)
             if (localpet==0) then
@@ -644,11 +644,11 @@ if (localpet == 0) then
         call ESMF_FieldBundleGet(target_hist_bundle_soil, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
         do i = 1, n_hist_fields_soil
             call ESMF_FieldGet(fields(i),name=varname,rc=error)
-            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
                   call error_handler("IN FieldGet", error)
             if (localpet==0) then
                 print*,"- DEFINE ON FILE TARGET GRID ", varname
@@ -676,12 +676,12 @@ if (localpet == 0) then
         call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
 
         do i = 1, n_hist_fields_3d_nz
             call ESMF_FieldGet(fields(i),name=varname,rc=error)
-            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
                   call error_handler("IN FieldGet", error)
             if (localpet==0) then
                 if (wrf_mod_vars .and. trim(varname)=='U') then
@@ -777,11 +777,11 @@ if (localpet == 0) then
         call ESMF_FieldBundleGet(target_hist_bundle_3d_nzp1, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
         do i = 1, n_hist_fields_3d_nzp1
             call ESMF_FieldGet(fields(i),name=varname,rc=error)
-            if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
                   call error_handler("IN FieldGet", error)
             if (localpet==0) then
                 print*,"- DEFINE ON FILE TARGET GRID ", varname
@@ -842,7 +842,7 @@ if (localpet == 0) then
 
    if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LONGITUDE"
    call ESMF_FieldGather(longitude_target_grid, dum2d, rootPet=0, rc=error)
-   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+   if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
       call error_handler("IN FieldGather", error)
 
 
@@ -856,7 +856,7 @@ if (localpet == 0) then
 
    if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LATITUDE"
    call ESMF_FieldGather(latitude_target_grid, dum2d, rootPet=0, rc=error)
-   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+   if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
       call error_handler("IN FieldGather", error)
 
 
@@ -869,7 +869,7 @@ if (localpet == 0) then
 !  longitude on u grid
  if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LONGITUDE U"
  call ESMF_FieldGather(longitude_u_target_grid,dum2dtu(:,:,1),rootPet=0,rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+ if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
  if (localpet==0) then
    error = nf90_put_var( ncid, id_lonu, dum2dtu, count=shape(dum2dtu))
@@ -880,7 +880,7 @@ if (localpet == 0) then
 
  if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LATITUDE U"
  call ESMF_FieldGather(latitude_u_target_grid,dum2dtu(:,:,1),rootPet=0,rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+ if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
  if (localpet==0) then
    error = nf90_put_var( ncid, id_latu, dum2dtu,count=shape(dum2dtu))
@@ -890,7 +890,7 @@ if (localpet == 0) then
 !  latitude on v grid
  if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LATITUDE V"
  call ESMF_FieldGather(latitude_v_target_grid,dum2dv(:,:),rootPet=0, rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+ if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
  if (localpet==0) then
    maxinds = shape(dum2dv)
@@ -901,7 +901,7 @@ if (localpet == 0) then
 !  longitude on v grid
  if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID LONGITUDE V"
  call ESMF_FieldGather(longitude_v_target_grid,dum2dv(:,:),rootPet=0, rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+ if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
  if (localpet==0) then
    error = nf90_put_var( ncid, id_lonv, dum2dv, count=(/maxinds(1),maxinds(2),1/))
@@ -912,7 +912,7 @@ if (localpet == 0) then
 
  if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID mapfac_m"
    call ESMF_FieldGather(mapfac_m_target_grid, dum2d, rootPet=0, rc=error)
-   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+   if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
 
  if (localpet ==0) then
@@ -923,7 +923,7 @@ if (localpet == 0) then
 
   if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID mapfac_u"
    call ESMF_FieldGather(mapfac_u_target_grid, dum2du, rootPet=0,rc=error)
-   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+   if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
 
  if (localpet ==0) then
@@ -934,7 +934,7 @@ if (localpet == 0) then
 
  if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID mapfac_v"
    call ESMF_FieldGather(mapfac_v_target_grid, dum2dv, rootPet=0,rc=error)
-   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+   if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
 
  if (localpet ==0) then
@@ -955,7 +955,7 @@ if (localpet == 0) then
 
  if (localpet==0)  print*,"- CALL FieldGather FOR TARGET GRID LATITUDE"
    call ESMF_FieldGather(hgt_target_grid, dum2d, rootPet=0, rc=error)
-   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+   if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
 
  if (localpet==0) print*,"- WRITE TO FILE TARGET GRID HGT"
@@ -1016,12 +1016,12 @@ if (localpet == 0) then
  do i = 1, n2d
 
     call ESMF_FieldGet(field_write_2d(i), name=varname, rc=error)
-    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
       call error_handler("IN FieldGet", error)
 
     if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID ", trim(varname)
     call ESMF_FieldGather(field_write_2d(i), dum2d, rootPet=0, rc=error)
-    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+    if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
       call error_handler("IN FieldGather", error)
 
     if (localpet==0) then
@@ -1040,12 +1040,12 @@ if (localpet == 0) then
  print*, "Loop writing over ", n3d, "3-d nz vars"
  do i = 1, n3d
     call ESMF_FieldGet(field_extra3(i), name=varname, rc=error)
-    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+    if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGet", error)
 
     if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID ", trim(varname)
     call ESMF_FieldGather(field_extra3(i), dum3d, rootPet=0, rc=error)
-    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+    if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldGather", error)
 
     if (localpet==0) then
@@ -1063,17 +1063,17 @@ if (localpet == 0) then
      call ESMF_FieldBundleGet(target_hist_bundle_soil, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
 
      do i = 1, n_hist_fields_soil
         call ESMF_FieldGet(fields(i), name=varname, rc=error)
-        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+        if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGet", error)
 
         if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID ", trim(varname)
         call ESMF_FieldGather(fields(i), dumsoil, rootPet=0, rc=error)
-        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+        if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGather", error)
 
 
@@ -1095,15 +1095,15 @@ if (localpet == 0) then
      call ESMF_FieldBundleGet(target_hist_bundle_3d_nz, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
 
      do n = 1, n_hist_fields_3d_nz
         call ESMF_FieldGet(fields(n), name=varname, rc=error)
-        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+        if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGet", error)
         call ESMF_FieldGather(fields(n), dum3d, rootPet=0, rc=error)
-         if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+         if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
              call error_handler("IN FieldGather", error)
         if (localpet==0) then
             if (wrf_mod_vars .and. trim(varname)=='U') then
@@ -1173,17 +1173,17 @@ if (localpet == 0) then
      call ESMF_FieldBundleGet(target_hist_bundle_3d_nzp1, fieldList=fields, &
                           itemorderflag=ESMF_ITEMORDER_ADDORDER, &
                           rc=error)
-       if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+       if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
               call error_handler("IN FieldBundleGet", error)
 
      do i = 1, n_hist_fields_3d_nzp1
         call ESMF_FieldGet(fields(i), name=varname, rc=error)
-        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+        if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGet", error)
 
         if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID ", trim(varname)
         call ESMF_FieldGather(fields(i), dum3dp1, rootPet=0, rc=error)
-        if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+        if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldGather", error)
 
         if (localpet==0) then
