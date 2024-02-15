@@ -9,6 +9,7 @@ module load hpcx-mt-ompi-gcc
 module load gcc/13.2.0
 
 export GNU_LIBPATH=/scratch/ywang/tools/gnu
+export ESMFMKFILE=/scratch/ywang/tools/gnu/esmf-8.6.0/lib/libO/Linux.gfortran.64.openmpi.default/esmf.mk
 
 export NETCDF=${GNU_LIBPATH}
 export PNETCDF=${GNU_LIBPATH}

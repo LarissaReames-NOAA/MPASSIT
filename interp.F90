@@ -1,25 +1,25 @@
 !> @file
 !! @brief Interpolate atmospheric and surface data from MPAS diag, init, or forecast files
 !! to a target grid.
-!! @author  Larissa Reames CIWRO/NOAA/NSSL
+!! @author  Larissa Reames CIWRO/NOAA/NSSL 
 
 !> Public variables are defined below: "target" indicates field
 !! associated with the input grid.
 !!
-!! @author  Larissa Reames CIWRO/NOAA/NSSL
+!! @author  Larissa Reames CIWRO/NOAA/NSSL 
 
-module interp
+ module interp
 
-    use esmf
-    use netcdf
-    use utils_mod
+ use esmf
+ use netcdf
+ use utils_mod
 
-    use program_setup, only: hist_file_input_grid, &
-                             diag_file_input_grid, &
-                             grid_file_input_grid, &
-                             interp_diag, interp_hist, &
-                             i_target, j_target, &
-                             interp_as_bundle
+ use program_setup, only          : hist_file_input_grid, &
+                                    diag_file_input_grid, &
+                                    grid_file_input_grid, &
+                                    interp_diag, interp_hist, &
+                                    i_target, j_target, &
+                                    interp_as_bundle
 
  use model_grid, only             : input_grid, target_grid, &
                                     nCells_input, nVert_input,  &
@@ -64,6 +64,35 @@ module interp
                                     n_hist_fields_3d_vert, &
                                     n_hist_fields_soil
 
+ implicit none
+
+ private
+ 
+ public :: interp_data
+ 
+ type(esmf_routehandle)           :: rh_patch
+ real(esmf_kind_r8), parameter    :: spval = 9.9E10
+ integer(esmf_kind_i4), pointer   :: unmappedPtr(:)
+ 
+ contains
+ 
+ subroutine interp_data(localpet)
+ 
+     implicit none
+     
+     integer, intent(in)   :: localpet
+ 
+     if (interp_diag) then
+        call interp_diag_data(localpet)
+     endif
+     if (interp_hist) then
+        call interp_hist_data(localpet)
+     endif
+ 
+ end subroutine interp_data
+ 
+ subroutine interp_diag_data(localpet)
+ 
     implicit none
     
     integer, intent(in)              :: localpet
@@ -158,10 +187,9 @@ module interp
     !if (.not. interp_diag) then
     if (n_hist_fields_2d_patch > 0) then
         method = ESMF_REGRIDMETHOD_BILINEAR
-
-        if (localpet == 0) print *, "- CREATE DIAG BUNDLE REGRID ROUTEHANDLE"
-
-        call ESMF_FieldBundleRegridStore(input_diag_bundle, target_diag_bundle, &
+        if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
+    
+        call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
                                          srcTermProcessing=isrctermprocessing, &
@@ -528,3 +556,5 @@ module interp
  end subroutine init_target_hist_fields
 
 end module interp
+ 
+ 
