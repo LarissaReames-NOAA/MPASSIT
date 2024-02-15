@@ -80,6 +80,6 @@ contains
             end if
         end do
 
-    end function to_upper
+end function to_upper
 
-end module utils_mod
+ end module utils_mod

@@ -21,60 +21,60 @@ module input_data
                              grid_file_input_grid, &
                              interp_diag, interp_hist
 
-    use model_grid, only: input_grid, &
-                          nCells_input, nVert_input, &
-                          nz_input, nzp1_input, &
-                          nsoil_input, strlen, &
-                          valid_time, config_dt, &
-                          start_time, lsm_scheme, &
-                          mp_scheme, conv_scheme, &
-                          cell_latitude_input_grid, &
-                          cell_longitude_input_grid, &
-                          zgrid_input_grid, &
-                          input_diag_bundle, &
-                          target_diag_names, &
-                          input_hist_bundle_2d_cons, &
-                          input_hist_bundle_2d_patch, &
-                          input_hist_bundle_2d_nstd, &
-                          input_hist_bundle_3d_nz, &
-                          input_hist_bundle_3d_nzp1, &
-                          input_hist_bundle_3d_vert, &
-                          input_hist_bundle_soil, &
-                          target_hist_names_2d_cons, &
-                          target_hist_names_2d_nstd, &
-                          target_hist_names_2d_patch, &
-                          target_hist_names_3d_nz, &
-                          target_hist_names_3d_nzp1, &
-                          target_hist_names_3d_vert, &
-                          target_hist_names_soil, &
-                          target_diag_units, &
-                          target_hist_units_2d_cons, &
-                          target_hist_units_2d_nstd, &
-                          target_hist_units_2d_patch, &
-                          target_hist_units_3d_nzp1, &
-                          target_hist_units_3d_vert, &
-                          target_hist_units_3d_nz, &
-                          target_hist_units_soil, &
-                          target_diag_longname, &
-                          target_hist_longname_2d_cons, &
-                          target_hist_longname_2d_nstd, &
-                          target_hist_longname_2d_patch, &
-                          target_hist_longname_3d_nzp1, &
-                          target_hist_longname_3d_nz, &
-                          target_hist_longname_3d_vert, &
-                          target_hist_longname_soil, &
-                          n_diag_fields, &
-                          n_hist_fields_2d_cons, &
-                          n_hist_fields_2d_nstd, &
-                          n_hist_fields_2d_patch, &
-                          n_hist_fields_3d_vert, &
-                          n_hist_fields_3d_nz, &
-                          n_hist_fields_3d_nzp1, &
-                          n_hist_fields_3d_vert, &
-                          n_hist_fields_soil, &
-                          elemIDs, nCellsPerPET, &
-                          nNodesPerPET, &
-                          nodeIDs, diag_out_interval
+ use model_grid, only             : input_grid,        &
+                                    nCells_input, nVert_input,  &
+                                    nz_input, nzp1_input, &
+                                    nsoil_input, strlen, &
+                                    valid_time, config_dt, &
+                                    start_time, lsm_scheme, &
+                                    mp_scheme, conv_scheme, &
+                                    cell_latitude_input_grid, &
+                                    cell_longitude_input_grid, &
+                                    zgrid_input_grid, &
+                                    input_diag_bundle, &
+                                    target_diag_names, &
+                                    input_hist_bundle_2d_cons, &
+                                    input_hist_bundle_2d_patch, &
+                                    input_hist_bundle_2d_nstd, &
+                                    input_hist_bundle_3d_nz, &
+                                    input_hist_bundle_3d_nzp1, &
+                                    input_hist_bundle_3d_vert, &
+                                    input_hist_bundle_soil, &
+                                    target_hist_names_2d_cons, &
+                                    target_hist_names_2d_nstd, &
+                                    target_hist_names_2d_patch, &
+                                    target_hist_names_3d_nz, &
+                                    target_hist_names_3d_nzp1, &
+                                    target_hist_names_3d_vert, &
+                                    target_hist_names_soil, &
+                                    target_diag_units, &
+                                    target_hist_units_2d_cons, &
+                                    target_hist_units_2d_nstd, &
+                                    target_hist_units_2d_patch, &
+                                    target_hist_units_3d_nzp1, &
+                                    target_hist_units_3d_vert, &
+                                    target_hist_units_3d_nz, &
+                                    target_hist_units_soil, &
+                                    target_diag_longname, &
+                                    target_hist_longname_2d_cons, &
+                                    target_hist_longname_2d_nstd, &
+                                    target_hist_longname_2d_patch, &
+                                    target_hist_longname_3d_nzp1, &
+                                    target_hist_longname_3d_nz, &
+                                    target_hist_longname_3d_vert, &
+                                    target_hist_longname_soil, &
+                                    n_diag_fields, &
+                                    n_hist_fields_2d_cons, &
+                                    n_hist_fields_2d_nstd, &
+                                    n_hist_fields_2d_patch, &
+                                    n_hist_fields_3d_vert, &
+                                    n_hist_fields_3d_nz, &
+                                    n_hist_fields_3d_nzp1, &
+                                    n_hist_fields_3d_vert, &
+                                    n_hist_fields_soil, &
+                                    elemIDs, nCellsPerPET, &
+                                    nNodesPerPET, &
+                                    nodeIDs,diag_out_interval
 
     implicit none
 
@@ -140,18 +140,63 @@ contains
 !---------------------------------------------------------------------------
 ! Initialize esmf atmospheric fields.
 !---------------------------------------------------------------------------
-        allocate (fields(n_diag_fields))
-        allocate (target_diag_units(n_diag_fields))
-        allocate (target_diag_longname(n_diag_fields))
-        call ESMF_FieldBundleGet(input_diag_bundle, fieldList=fields, &
-                                 itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                 rc=rc)
-        if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldBundleGet", rc)
+ allocate(fields(n_diag_fields))
+ allocate(target_diag_units(n_diag_fields))
+ allocate(target_diag_longname(n_diag_fields))
+ call ESMF_FieldBundleGet(input_diag_bundle, fieldList=fields, & 
+                          itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                          rc=rc)
+ if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+     call error_handler("IN FieldBundleGet", rc)
+     
+ call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+ if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+     call error_handler("IN MeshGet", rc)
+ 
+ allocate(dummy(nCells_input))
+ allocate(dummy2(nz_input, nCells_input,1))
+ 
+ do i = 1,n_diag_fields
 
-        call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-        if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN MeshGet", rc)
+    call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+     call error_handler("IN FieldGet", rc)
+    
+    if (localpet==0) print*,"- READ ", trim(vname)
+    error=nf90_inq_varid(ncid, trim(vname), id_var)
+    call netcdf_err(error, 'reading field id' )
+    error=nf90_inquire_variable(ncid, id_var, ndims=ndims)
+    call netcdf_err(error, 'reading variable dims' )
+    if (ndims == 2) then
+      call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
+      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldGet", rc)
+      error=nf90_get_var(ncid, id_var, dummy)
+      call netcdf_err(error, 'reading field' )
+      if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+      do j = 1, nCellsPerPET
+          varptr(j) = dummy(elemIDs(j))
+      enddo
+      !if (localpet==0) print*, localpet, minval(varptr), maxval(varptr)
+      nullify(varptr)
+    elseif (ndims == 3) then
+      call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+        call error_handler("IN FieldGet", rc)
+      error=nf90_get_var(ncid, id_var, dummy2)
+      call netcdf_err(error, 'reading field' )
+      if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+      do j = 1, nCellsPerPET
+        varptr2(j,:) = dummy2(:,elemIDs(j),1)
+      enddo
+      !if (localpet==0) print*, localpet, minval(varptr2), maxval(varptr2)
+      nullify(varptr2)
+    endif
+    error=nf90_get_att(ncid,id_var,'units',target_diag_units(i))
+    call netcdf_err(error, 'reading field units' )
+    error=nf90_get_att(ncid,id_var,'long_name',target_diag_longname(i))
+    call netcdf_err(error, 'reading field long_name' )
+ enddo
 
         allocate (dummy(nCells_input))
         allocate (dummy2(nz_input, nCells_input, 1))
@@ -291,6 +336,54 @@ contains
         deallocate (diag_fields, input_diag_names)
     end subroutine init_input_diag_fields
 
+ end subroutine read_input_diag_data
+ 
+ subroutine init_input_diag_fields(localpet)
+ 
+    implicit none
+    
+    integer, intent(in)           :: localpet
+    integer                       :: i, rc
+    type(esmf_field),allocatable  :: diag_fields(:)
+    character(50), allocatable    :: input_diag_names(:)
+    character(50)                 :: fname
+    
+    fname = 'diaglist'
+    
+    call read_varlist(localpet,fname,n_diag_fields,input_diag_names, target_diag_names)
+    
+    allocate(diag_fields(n_diag_fields))
+    if (localpet==0) print*,"- INITIALIZE INPUT DIAG FIELDS."
+    do i = 1, n_diag_fields
+        if (input_diag_names(i) == "refl10cm") then
+          if (localpet==0) print*, "- INIT FIELD ", input_diag_names(i)
+          diag_fields(i) = ESMF_FieldCreate(input_grid, &
+                            typekind=ESMF_TYPEKIND_R8, &
+                            meshloc=ESMF_MESHLOC_ELEMENT, &
+                            ungriddedLBound=(/1/), &
+                            ungriddedUBound=(/nz_input/), &
+                            name=input_diag_names(i), rc=rc)
+          if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
+          call error_handler("IN FieldCreate", rc)
+        else 
+          if (localpet==0) print*, "- INIT FIELD ", input_diag_names(i)    
+          diag_fields(i) = ESMF_FieldCreate(input_grid, & 
+                            typekind=ESMF_TYPEKIND_R8, &
+                            meshloc=ESMF_MESHLOC_ELEMENT, &
+                            name=input_diag_names(i), rc=rc)
+          if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldCreate", rc)
+        endif
+    enddo
+    
+    input_diag_bundle = ESMF_FieldBundleCreate(fieldList=diag_fields, & 
+                                    name="input diag data", rc=rc)
+    if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+        call error_handler("IN FieldBundleCreate", rc)
+ 
+    deallocate(diag_fields, input_diag_names)
+ end subroutine init_input_diag_fields
+ 
 !> Read input grid hist data.
 !!
 !! @param[in] localpet  ESMF local persistent execution thread
@@ -384,175 +477,190 @@ contains
 ! Initialize 2d esmf atmospheric fields for bilinear/patch interpolation
 !---------------------------------------------------------------------------
 
-        if (localpet == 0) print *, "Begin reading variables"
-        if (n_hist_fields_2d_patch > 0) then
-            if (localpet == 0) print *, "read 2d hist"
-            allocate (fields(n_hist_fields_2d_patch))
-            allocate (target_hist_units_2d_patch(n_hist_fields_2d_patch))
-            allocate (target_hist_longname_2d_patch(n_hist_fields_2d_patch))
-            call ESMF_FieldBundleGet(input_hist_bundle_2d_patch, fieldList=fields, &
-                                     itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                     rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN FieldBundleGet", rc)
-
-            call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN MeshGet", rc)
-
-            allocate (dummy2(nCells_input, 1))
-
-            do i = 1, n_hist_fields_2d_patch
-
-                call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-                if (localpet == 0) print *, vname
-                call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-
-                if (localpet == 0) print *, "- READ ", trim(vname)
-                error = nf90_inq_varid(ncid, trim(vname), id_var)
-                call netcdf_err(error, 'reading field id')
-                error = nf90_get_var(ncid, id_var, dummy2)
-                call netcdf_err(error, 'reading field')
-                error = nf90_get_att(ncid, id_var, 'units', target_hist_units_2d_patch(i))
-                call netcdf_err(error, 'reading field units')
-                error = nf90_get_att(ncid, id_var, 'long_name', target_hist_longname_2d_patch(i))
-                call netcdf_err(error, 'reading field long_name')
-
-                if (localpet == 0) print *, "- SET ON MESH ", trim(vname)
-                do j = 1, nCellsPerPET
-                    varptr(j) = dummy2(elemIDs(j), 1)
-                end do
-
-                nullify (varptr)
-            end do
-            deallocate (dummy2)
-            deallocate (fields)
-        end if
+ if (localpet==0) print*, "Begin reading variables"
+ if (n_hist_fields_2d_patch > 0) then
+    if (localpet==0) print*, "read 2d hist"
+    allocate(fields(n_hist_fields_2d_patch))
+    allocate(target_hist_units_2d_patch(n_hist_fields_2d_patch))
+    allocate(target_hist_longname_2d_patch(n_hist_fields_2d_patch))
+     call ESMF_FieldBundleGet(input_hist_bundle_2d_patch, fieldList=fields, & 
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleGet", rc)
+     
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN MeshGet", rc)
+ 
+     allocate(dummy2(nCells_input,1))
+ 
+     do i = 1,n_hist_fields_2d_patch
+        
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+        if (localpet==0) print*, vname
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy2)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_2d_patch(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_patch(i))
+        call netcdf_err(error, 'reading field long_name' )
+        
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nCellsPerPET
+            varptr(j) = dummy2(elemIDs(j),1)
+        enddo
 
 !---------------------------------------------------------------------------
 ! Initialize 2d esmf atmospheric fields for conservative interpolation
 !---------------------------------------------------------------------------
 
-        if (n_hist_fields_2d_cons > 0) then
-            if (localpet == 0) print *, "read 2d hist cons"
-            allocate (fields(n_hist_fields_2d_cons))
-            allocate (target_hist_units_2d_cons(n_hist_fields_2d_cons))
-            allocate (target_hist_longname_2d_cons(n_hist_fields_2d_cons))
-            call ESMF_FieldBundleGet(input_hist_bundle_2d_cons, fieldList=fields, &
-                                     itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                     rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN FieldBundleGet", rc)
+ if (n_hist_fields_2d_cons > 0) then
+    if (localpet==0) print*, "read 2d hist cons"
+    allocate(fields(n_hist_fields_2d_cons))
+    allocate(target_hist_units_2d_cons(n_hist_fields_2d_cons))
+    allocate(target_hist_longname_2d_cons(n_hist_fields_2d_cons))
+     call ESMF_FieldBundleGet(input_hist_bundle_2d_cons, fieldList=fields, & 
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleGet", rc)
+     
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN MeshGet", rc)
+ 
+     allocate(dummy2(nCells_input,1))
+ 
+     do i = 1,n_hist_fields_2d_cons
 
-            call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN MeshGet", rc)
-
-            allocate (dummy2(nCells_input, 1))
-
-            do i = 1, n_hist_fields_2d_cons
-
-                call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-
-                call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-
-                if (localpet == 0) print *, "- READ ", trim(vname)
-                error = nf90_inq_varid(ncid, trim(vname), id_var)
-                call netcdf_err(error, 'reading field id')
-                error = nf90_get_var(ncid, id_var, dummy2)
-                call netcdf_err(error, 'reading field')
-                error = nf90_get_att(ncid, id_var, 'units', target_hist_units_2d_cons(i))
-                call netcdf_err(error, 'reading field units')
-                error = nf90_get_att(ncid, id_var, 'long_name', target_hist_longname_2d_cons(i))
-                call netcdf_err(error, 'reading field long_name')
-
-                if (localpet == 0) print *, "- SET ON MESH ", trim(vname)
-                do j = 1, nCellsPerPET
-                    varptr(j) = dummy2(elemIDs(j), 1)
-                end do
-
-                nullify (varptr)
-            end do
-            deallocate (dummy2)
-            deallocate (fields)
-        end if
-
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy2)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_2d_cons(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_cons(i))
+        call netcdf_err(error, 'reading field long_name' )
+        
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nCellsPerPET
+            varptr(j) = dummy2(elemIDs(j),1)
+        enddo
+    
+        nullify(varptr)
+     enddo
+     deallocate(dummy2)
+     deallocate(fields)
+ endif
+ 
 !---------------------------------------------------------------------------------
 ! Initialize 2d esmf atmospheric fields for nearest source to dest interpolation
 !---------------------------------------------------------------------------------
 
-        if (n_hist_fields_2d_nstd > 0) then
-            allocate (fields(n_hist_fields_2d_nstd))
-            allocate (target_hist_units_2d_nstd(n_hist_fields_2d_nstd))
-            allocate (target_hist_longname_2d_nstd(n_hist_fields_2d_nstd))
-            call ESMF_FieldBundleGet(input_hist_bundle_2d_nstd, fieldList=fields, &
-                                     itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                     rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN FieldBundleGet", rc)
+ if (n_hist_fields_2d_nstd > 0) then
+    allocate(fields(n_hist_fields_2d_nstd))
+    allocate(target_hist_units_2d_nstd(n_hist_fields_2d_nstd))
+    allocate(target_hist_longname_2d_nstd(n_hist_fields_2d_nstd))
+     call ESMF_FieldBundleGet(input_hist_bundle_2d_nstd, fieldList=fields, & 
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleGet", rc)
+     
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN MeshGet", rc)
+ 
+     allocate(dummy2(nCells_input,1))
+ 
+     do i = 1,n_hist_fields_2d_nstd
 
-            call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN MeshGet", rc)
-
-            allocate (dummy2(nCells_input, 1))
-
-            do i = 1, n_hist_fields_2d_nstd
-
-                call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-
-                call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-
-                if (localpet == 0) print *, "- READ ", trim(vname)
-                error = nf90_inq_varid(ncid, trim(vname), id_var)
-                call netcdf_err(error, 'reading field id')
-                error = nf90_get_var(ncid, id_var, dummy2)
-                call netcdf_err(error, 'reading field')
-                error = nf90_get_att(ncid, id_var, 'units', target_hist_units_2d_nstd(i))
-                call netcdf_err(error, 'reading field units')
-                error = nf90_get_att(ncid, id_var, 'long_name', target_hist_longname_2d_nstd(i))
-                call netcdf_err(error, 'reading field long_name')
-
-                if (localpet == 0) print *, "- SET ON MESH ", trim(vname)
-                do j = 1, nCellsPerPET
-                    varptr(j) = dummy2(elemIDs(j), 1)
-                end do
-
-                nullify (varptr)
-            end do
-            deallocate (dummy2)
-            deallocate (fields)
-        end if
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy2)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_2d_nstd(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_2d_nstd(i))
+        call netcdf_err(error, 'reading field long_name' )
+        
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nCellsPerPET
+            varptr(j) = dummy2(elemIDs(j),1)
+        enddo
 
 !---------------------------------------------------------------------------
 ! Initialize 3d esmf soil fields for bilinear/patch interpolation
 !---------------------------------------------------------------------------
 
-        if (n_hist_fields_soil > 0) then
-            allocate (fields(n_hist_fields_soil))
-            allocate (target_hist_units_soil(n_hist_fields_soil))
-            allocate (target_hist_longname_soil(n_hist_fields_soil))
-            call ESMF_FieldBundleGet(input_hist_bundle_soil, fieldList=fields, &
-                                     itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                     rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN FieldBundleGet", rc)
+ if (n_hist_fields_soil > 0) then
+    allocate(fields(n_hist_fields_soil))
+    allocate(target_hist_units_soil(n_hist_fields_soil))
+    allocate(target_hist_longname_soil(n_hist_fields_soil))
+     call ESMF_FieldBundleGet(input_hist_bundle_soil, fieldList=fields, & 
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleGet", rc)
+     
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN MeshGet", rc)
+ 
+     allocate(dummy3(nsoil_input,nCells_input,1))
+ 
+     do i = 1,n_hist_fields_soil
 
-            call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN MeshGet", rc)
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy3)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_soil(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_soil(i))
+        call netcdf_err(error, 'reading field long_name' )
+        
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nCellsPerPET
+            varptr2(j,:) = dummy3(:,elemIDs(j),1)
+        enddo
 
             allocate (dummy3(nsoil_input, nCells_input, 1))
 
@@ -591,66 +699,157 @@ contains
 ! Initialize 3d esmf atmospheric fields with nVertLevels vertical dimension
 !---------------------------------------------------------------------------
 
-        if (n_hist_fields_3d_nz > 0) then
-            allocate (fields(n_hist_fields_3d_nz))
-            allocate (target_hist_units_3d_nz(n_hist_fields_3d_nz))
-            allocate (target_hist_longname_3d_nz(n_hist_fields_3d_nz))
-            call ESMF_FieldBundleGet(input_hist_bundle_3d_nz, fieldList=fields, &
-                                     itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                     rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN FieldBundleGet", rc)
+ if (n_hist_fields_3d_nz > 0 ) then
+     allocate(fields(n_hist_fields_3d_nz))
+     allocate(target_hist_units_3d_nz(n_hist_fields_3d_nz))
+    allocate(target_hist_longname_3d_nz(n_hist_fields_3d_nz))
+     call ESMF_FieldBundleGet(input_hist_bundle_3d_nz, fieldList=fields, & 
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleGet", rc)
+     
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN MeshGet", rc)
+ 
+     allocate(dummy3(nz_input,nCells_input,1))
+ 
+     do i = 1,n_hist_fields_3d_nz
 
-            call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN MeshGet", rc)
-
-            allocate (dummy3(nz_input, nCells_input, 1))
-
-            do i = 1, n_hist_fields_3d_nz
-
-                call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-
-                call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
-
-                if (localpet == 0) print *, "- READ ", trim(vname)
-                error = nf90_inq_varid(ncid, trim(vname), id_var)
-                call netcdf_err(error, 'reading field id')
-                error = nf90_get_var(ncid, id_var, dummy3)
-                call netcdf_err(error, 'reading field')
-                error = nf90_get_att(ncid, id_var, 'units', target_hist_units_3d_nz(i))
-                call netcdf_err(error, 'reading field units')
-                error = nf90_get_att(ncid, id_var, 'long_name', target_hist_longname_3d_nz(i))
-                call netcdf_err(error, 'reading field long_name')
-
-                if (localpet == 0) print *, "- SET ON MESH ", trim(vname)
-                do j = 1, nCellsPerPET
-                    varptr2(j, :) = dummy3(:, elemIDs(j), 1)
-                end do
-
-                nullify (varptr2)
-            end do
-            deallocate (dummy3)
-            deallocate (fields)
-        end if
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy3)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_3d_nz(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_3d_nz(i))
+        call netcdf_err(error, 'reading field long_name' )
+        
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nCellsPerPET
+            varptr2(j,:) = dummy3(:,elemIDs(j),1)
+        enddo
+    
+        nullify(varptr2)
+     enddo
+     deallocate(dummy3)
+     deallocate(fields)
+ endif
 
 !-------------------------------------------------------------------------------
 ! Initialize 3d esmf atmospheric fields with nVertLevels+1 vertical dimension
 !-------------------------------------------------------------------------------
+ 
+ if (n_hist_fields_3d_nzp1 > 0 ) then
+     allocate(fields(n_hist_fields_3d_nzp1))
+     allocate(target_hist_units_3d_nzp1(n_hist_fields_3d_nzp1))
+     allocate(target_hist_longname_3d_nzp1(n_hist_fields_3d_nzp1))
+     call ESMF_FieldBundleGet(input_hist_bundle_3d_nzp1, fieldList=fields, & 
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldBundleGet", rc)
+     
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN MeshGet", rc)
+ 
+     allocate(dummy3(nzp1_input,nCells_input,1))
+ 
+     do i = 1,n_hist_fields_3d_nzp1
 
-        if (n_hist_fields_3d_nzp1 > 0) then
-            allocate (fields(n_hist_fields_3d_nzp1))
-            allocate (target_hist_units_3d_nzp1(n_hist_fields_3d_nzp1))
-            allocate (target_hist_longname_3d_nzp1(n_hist_fields_3d_nzp1))
-            call ESMF_FieldBundleGet(input_hist_bundle_3d_nzp1, fieldList=fields, &
-                                     itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                     rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN FieldBundleGet", rc)
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy3)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_3d_nzp1(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_3d_nzp1(i))
+        call netcdf_err(error, 'reading field long_name' )
+        
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nCellsPerPET
+            varptr2(j,:) = dummy3(:,elemIDs(j),1)
+        enddo
+        
+        !if (localpet==0) print*, vname, minval(varptr2), maxval(varptr2)
+        nullify(varptr2)
+     enddo
+     deallocate(dummy3)
+     deallocate(fields)
+ endif
+
+!---------------------------------------------------------------------------
+! Initialize 3d esmf atmospheric fields with nVertLevels vertical dimension and
+! defined on unstructured mesh nodes
+!---------------------------------------------------------------------------
+
+ if (n_hist_fields_3d_vert > 0 ) then
+     allocate(fields(n_hist_fields_3d_vert))
+     allocate(target_hist_units_3d_vert(n_hist_fields_3d_vert))
+    allocate(target_hist_longname_3d_vert(n_hist_fields_3d_vert))
+     call ESMF_FieldBundleGet(input_hist_bundle_3d_vert, fieldList=fields, &
+                              itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                              rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN FieldBundleGet", rc)
+
+     call ESMF_MeshGet(input_grid, nodeCount = nodes, rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN MeshGet", rc)
+
+     allocate(dummy3(nz_input,nVert_input,1))
+
+     do i = 1,n_hist_fields_3d_vert
+
+        call ESMF_FieldGet(fields(i), name=vname, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN FieldGet", rc)
+
+        call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__line__,file=__file__))&
+         call error_handler("IN FieldGet", rc)
+
+        if (localpet==0) print*,"- READ ", trim(vname)
+        error=nf90_inq_varid(ncid, trim(vname), id_var)
+        call netcdf_err(error, 'reading field id' )
+        error=nf90_get_var(ncid, id_var, dummy3)
+        call netcdf_err(error, 'reading field' )
+        error=nf90_get_att(ncid,id_var,'units',target_hist_units_3d_vert(i))
+        call netcdf_err(error, 'reading field units' )
+        error=nf90_get_att(ncid,id_var,'long_name',target_hist_longname_3d_vert(i))
+        call netcdf_err(error, 'reading field long_name' )
+
+        if (localpet==0) print*,"- SET ON MESH ", trim(vname)
+        do j = 1, nNodesPerPET
+            varptr2(j,:) = dummy3(:,NodeIDs(j),1)
+        enddo
+
+        nullify(varptr2)
+     enddo
+     deallocate(dummy3)
+     deallocate(fields)
+ endif
+ 
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
             if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
@@ -658,11 +857,123 @@ contains
 
             allocate (dummy3(nzp1_input, nCells_input, 1))
 
-            do i = 1, n_hist_fields_3d_nzp1
+ end subroutine read_input_hist_data
+ 
+ subroutine init_input_hist_fields(localpet)
+ 
+    implicit none
+ 
+    integer, intent(in)           :: localpet   
+    integer                       :: i, j, k, n, rc 
+    integer                       :: n_hist_fields_2d, n_hist_fields_3d
+    !type(esmf_field), allocatable :: hist_fields_2d_cons(:), &
+ !                                 hist_fields_2d_nstd(:), &
+ !                                 hist_fields_2d_patch(:)
+    character(50), allocatable    :: input_hist_names_2d(:), &
+                                     input_hist_names_2d_cons(:), &
+                                     input_hist_names_2d_nstd(:), &
+                                     input_hist_names_2d_patch(:), &
+                                     input_hist_names_3d(:), &
+                                     input_hist_names_3d_nz(:), &
+                                     input_hist_names_soil(:), &
+                                     input_hist_names_3d_nzp1(:), &
+                                     input_hist_names_3d_vert(:), &
+                                     target_hist_names_2d(:), &
+                                     target_hist_names_3d(:)
+    type(esmf_field), allocatable :: fields(:)
+    character(50)                 :: cons_vars(2), nstd_vars(4), nzp1_vars(2), &
+                                     vert_vars(1)
+    character(50)                 :: fname
+    
+    cons_vars = (/'snow ','snowh'/)
+    nstd_vars = (/'ivgtyp  ','isltyp  ', 'xland   ','landmask'/)
+    nzp1_vars = (/'zgrid','w    '/)
+    vert_vars = (/'vorticity'/)
+    n_hist_fields_2d_cons = 0
+    n_hist_fields_2d_nstd = 0
+    n_hist_fields_2d_patch = 0
+    n_hist_fields_3d_vert = 0
+    n_hist_fields_3d_nz = 0
+    n_hist_fields_3d_nzp1 = 0
+    
+    fname = 'histlist_2d'
+    call read_varlist(localpet, fname,n_hist_fields_2d,input_hist_names_2d, target_hist_names_2d)
+    fname = 'histlist_3d'
+    call read_varlist(localpet,fname,n_hist_fields_3d,input_hist_names_3d, target_hist_names_3d)
+    fname = 'histlist_soil'
+    call read_varlist(localpet,fname,n_hist_fields_soil,input_hist_names_soil, target_hist_names_soil)
+    
+    do i = 1, n_hist_fields_2d
+        if (any(cons_vars == input_hist_names_2d(i))) then
+            n_hist_fields_2d_cons = n_hist_fields_2d_cons + 1 
+        elseif (any(nstd_vars == input_hist_names_2d(i))) then
+            n_hist_fields_2d_nstd = n_hist_fields_2d_nstd + 1 
+        else
+            n_hist_fields_2d_patch = n_hist_fields_2d_patch + 1
+        endif
+    enddo
+    
+    allocate(input_hist_names_2d_cons(n_hist_fields_2d_cons))
+    allocate(input_hist_names_2d_nstd(n_hist_fields_2d_nstd))
+    allocate(input_hist_names_2d_patch(n_hist_fields_2d_patch))
+    allocate(target_hist_names_2d_cons(n_hist_fields_2d_cons))
+    allocate(target_hist_names_2d_nstd(n_hist_fields_2d_nstd))
+    allocate(target_hist_names_2d_patch(n_hist_fields_2d_patch))
 
-                call ESMF_FieldGet(fields(i), name=vname, rc=rc)
-                if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", rc)
+    
+    j = 0
+    k = 0
+    n = 0
+    do i = 1, n_hist_fields_2d
+        if (any(cons_vars == input_hist_names_2d(i))) then
+            j = j+1
+            input_hist_names_2d_cons(j) = input_hist_names_2d(i)
+            target_hist_names_2d_cons(j) = target_hist_names_2d(i)
+            
+        elseif (any(nstd_vars == input_hist_names_2d(i))) then
+            k = k+1
+            input_hist_names_2d_nstd(k) = input_hist_names_2d(i)
+            target_hist_names_2d_nstd(k) = target_hist_names_2d(i)
+        else 
+            n = n+1
+            input_hist_names_2d_patch(n) = input_hist_names_2d(i)
+            target_hist_names_2d_patch(n) = target_hist_names_2d(i)
+        endif
+    enddo
+    
+    do i = 1, n_hist_fields_3d
+        if (any(nzp1_vars == input_hist_names_3d(i))) then
+            n_hist_fields_3d_nzp1 = n_hist_fields_3d_nzp1 + 1
+        elseif (any(vert_vars == input_hist_names_3d(i))) then
+            n_hist_fields_3d_vert = n_hist_fields_3d_vert + 1
+        else
+            n_hist_fields_3d_nz = n_hist_fields_3d_nz + 1
+        endif
+    enddo
+    
+    allocate(input_hist_names_3d_nz(n_hist_fields_3d_nz))
+    allocate(input_hist_names_3d_nzp1(n_hist_fields_3d_nzp1))
+    allocate(input_hist_names_3d_vert(n_hist_fields_3d_vert))
+    allocate(target_hist_names_3d_nz(n_hist_fields_3d_nz))
+    allocate(target_hist_names_3d_nzp1(n_hist_fields_3d_nzp1))
+    allocate(target_hist_names_3d_vert(n_hist_fields_3d_vert))
+    
+    j = 0
+    k = 0
+    n = 0
+    do i = 1, n_hist_fields_3d
+        if (any(nzp1_vars == input_hist_names_3d(i))) then
+            j = j+1
+            input_hist_names_3d_nzp1(j) = input_hist_names_3d(i)
+            target_hist_names_3d_nzp1(j) = target_hist_names_3d(i)
+        elseif (any(vert_vars == input_hist_names_3d(i))) then
+            n = n + 1
+            input_hist_names_3d_vert(n) = input_hist_names_3d(i)
+            target_hist_names_3d_vert(n) = target_hist_names_3d(i)
+        else
+            k = k+1 
+            input_hist_names_3d_nz(k) = input_hist_names_3d(i)
+            target_hist_names_3d_nz(k) = target_hist_names_3d(i)
 
                 call ESMF_FieldGet(fields(i), farrayPtr=varptr2, rc=rc)
                 if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
@@ -678,40 +989,173 @@ contains
                 error = nf90_get_att(ncid, id_var, 'long_name', target_hist_longname_3d_nzp1(i))
                 call netcdf_err(error, 'reading field long_name')
 
-                if (localpet == 0) print *, "- SET ON MESH ", trim(vname)
-                do j = 1, nCellsPerPET
-                    varptr2(j, :) = dummy3(:, elemIDs(j), 1)
-                end do
+            fields(i) = ESMF_FieldCreate(input_grid, & 
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_ELEMENT, &
+                                name=input_hist_names_2d_cons(i), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+    
+    
+        input_hist_bundle_2d_cons = ESMF_FieldBundleCreate(fieldList=fields, & 
+                                        name="input hist 2d data cons", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+        deallocate(fields)
+    endif
+    
+    if (n_hist_fields_2d_nstd > 0) then 
+        allocate(fields(n_hist_fields_2d_nstd))
+        do i = 1, n_hist_fields_2d_nstd
+    
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_nstd(i)
 
-                !if (localpet==0) print*, vname, minval(varptr2), maxval(varptr2)
-                nullify (varptr2)
-            end do
-            deallocate (dummy3)
-            deallocate (fields)
-        end if
+            fields(i) = ESMF_FieldCreate(input_grid, & 
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_ELEMENT, &
+                                name=input_hist_names_2d_nstd(i), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+    
+    
+        input_hist_bundle_2d_nstd = ESMF_FieldBundleCreate(fieldList=fields, & 
+                                        name="input hist 2d data nstd", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+            
+        deallocate(fields)
+    endif
+        
+    if (n_hist_fields_2d_patch > 0) then    
+        allocate(fields(n_hist_fields_2d_patch))
+        do i = 1, n_hist_fields_2d_patch
+    
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_patch(i)
 
-!---------------------------------------------------------------------------
-! Initialize 3d esmf atmospheric fields with nVertLevels vertical dimension and
-! defined on unstructured mesh nodes
-!---------------------------------------------------------------------------
+            fields(i) = ESMF_FieldCreate(input_grid, & 
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_ELEMENT, &
+                                name=input_hist_names_2d_patch(i), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+    
+    
+        input_hist_bundle_2d_patch = ESMF_FieldBundleCreate(fieldList=fields, & 
+                                        name="input hist 2d data patch", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+            
+        deallocate(fields)
+    endif
+    
+    if (n_hist_fields_soil > 0) then
+        allocate(fields(n_hist_fields_soil))
+        do i = 1, n_hist_fields_soil
+    
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_soil(i)
 
-        if (n_hist_fields_3d_vert > 0) then
-            allocate (fields(n_hist_fields_3d_vert))
-            allocate (target_hist_units_3d_vert(n_hist_fields_3d_vert))
-            allocate (target_hist_longname_3d_vert(n_hist_fields_3d_vert))
-            call ESMF_FieldBundleGet(input_hist_bundle_3d_vert, fieldList=fields, &
-                                     itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                     rc=rc)
-            if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                call error_handler("IN FieldBundleGet", rc)
+            fields(i) = ESMF_FieldCreate(input_grid, & 
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_ELEMENT, &
+                                name=input_hist_names_soil(i), & 
+                                ungriddedLBound=(/1/), &
+                                ungriddedUBound=(/nsoil_input/), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+    
+        input_hist_bundle_soil = ESMF_FieldBundleCreate(fieldList=fields, & 
+                                        name="input hist soil data", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+            
+        deallocate(fields)
+    endif
 
             call ESMF_MeshGet(input_grid, nodeCount=nodes, rc=rc)
             if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN MeshGet", rc)
 
-            allocate (dummy3(nz_input, nVert_input, 1))
+            fields(i) = ESMF_FieldCreate(input_grid, & 
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_ELEMENT, &
+                                name=input_hist_names_3d_nz(i), & 
+                                ungriddedLBound=(/1/), &
+                                ungriddedUBound=(/nz_input/), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+    
+        input_hist_bundle_3d_nz = ESMF_FieldBundleCreate(fieldList=fields, & 
+                                        name="input hist 3d nz data", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+            
+        deallocate(fields)
+    endif
+        
+    if (n_hist_fields_3d_nzp1 > 0) then
+        allocate(fields(n_hist_fields_3d_nzp1))
+        do i = 1, n_hist_fields_3d_nzp1
+    
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_nzp1(i)
 
-            do i = 1, n_hist_fields_3d_vert
+            fields(i) = ESMF_FieldCreate(input_grid, & 
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_ELEMENT, &
+                                name=input_hist_names_3d_nzp1(i), & 
+                                ungriddedLBound=(/1/), &
+                                ungriddedUBound=(/nzp1_input/), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+    
+        input_hist_bundle_3d_nzp1 = ESMF_FieldBundleCreate(fieldList=fields, & 
+                                        name="input hist 3d nzp1 data", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+            
+        deallocate(fields)
+    endif
+
+    if (n_hist_fields_3d_vert > 0) then
+        allocate(fields(n_hist_fields_3d_vert))
+        do i = 1, n_hist_fields_3d_vert
+
+            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_vert(i)
+
+            fields(i) = ESMF_FieldCreate(input_grid, &
+                                typekind=ESMF_TYPEKIND_R8, &
+                                meshloc=ESMF_MESHLOC_NODE, &
+                                name=input_hist_names_3d_vert(i), &
+                                ungriddedLBound=(/1/), &
+                                ungriddedUBound=(/nz_input/), rc=rc)
+            if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+        enddo
+
+        input_hist_bundle_3d_vert = ESMF_FieldBundleCreate(fieldList=fields, &
+                                        name="input hist 3d vertex data", rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldBundleCreate", rc)
+
+        deallocate(fields)
+    endif
+    
+    deallocate(input_hist_names_2d, target_hist_names_3d)
+    deallocate(input_hist_names_2d_cons)
+    deallocate(input_hist_names_2d_nstd)
+    deallocate(input_hist_names_2d_patch)
+    deallocate(input_hist_names_3d_nz)
+    deallocate(input_hist_names_3d_nzp1)
+    deallocate(input_hist_names_3d_vert)
+    deallocate(input_hist_names_soil)
+    
+ 
+ end subroutine init_input_hist_fields
 
                 call ESMF_FieldGet(fields(i), name=vname, rc=rc)
                 if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
