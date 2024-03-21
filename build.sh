@@ -5,7 +5,7 @@
 set -eux
 
 target=${1:-"NULL"}
-compiler=${compiler:-"gnu"}
+compiler=${compiler:-"intel"}
 echo $target, $compiler
 if [[ "$target" == "linux.*" || "$target" == "macosx.*" ]]; then
     unset -f module
@@ -31,8 +31,8 @@ if [[ "$target" == "hera" || "$target" == "orion" || "$target" == "wcoss2" || "$
    CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=../ -DEMC_EXEC_DIR=ON -DBUILD_TESTING=OFF"
    #CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=../ -DEMC_EXEC_DIR=ON -DENABLE_DOCS=ON -DBUILD_TESTING=ON"
 else
-   CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=../ -DEMC_EXEC_DIR=ON -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Debug"
-   #CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=../ -DEMC_EXEC_DIR=ON -DBUILD_TESTING=OFF"
+  #CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=../ -DEMC_EXEC_DIR=ON -DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=Debug"
+  CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=../ -DEMC_EXEC_DIR=ON -DBUILD_TESTING=OFF"
 fi
 
 rm -fr ./build

@@ -2,7 +2,7 @@ help([[
 Load environment to compile UFS_UTILS on Jet
 ]])
 
-cmake_ver=os.getenv("cmake_ver") or "3.16.1"
+cmake_ver=os.getenv("cmake_ver") or "3.28.1"
 load(pathJoin("cmake", cmake_ver))
 
 hpss_ver=os.getenv("hpss_ver") or ""
