@@ -113,6 +113,7 @@
                                      dumsoil(:,:,:), dumsoilt(:,:,:,:), &
                                      dumsmall(:,:), dum3dtmp(:,:,:), dum1d(:)
 
+ integer, allocatable  :: mask(:,:)
  type(esmf_field), allocatable    :: fields(:), field_write_2d(:), field_extra3(:)
  type (timedelta)                 :: xtime_dt
 
@@ -141,6 +142,7 @@
    allocate(dumsoil(i_target,j_target,nsoil_input))
    allocate(dumsoilt(i_target,j_target,nsoil_input,1))
    allocate(dum1d(1))
+   allocate(mask(i_target,j_target))
  else
    allocate(dumsmall(0,0))
    allocate(dum2d(0,0))
@@ -156,6 +158,7 @@
    allocate(dumsoil(0,0,0))
    allocate(dumsoilt(0,0,0,0))
    allocate(dum1d(0))
+   allocate(mask(0,0))
  endif
 
 if (localpet == 0) then
@@ -988,6 +991,34 @@ if (localpet == 0) then
    call netcdf_err(error, 'WRITING ZS RECORD' )
  endif
 
+! get mask from psfc
+! jdong
+mask=1
+ do n = 1, n2d
+    call ESMF_FieldGet(field_write_2d(n), name=varname, rc=error)
+    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+      call error_handler("IN FieldGet", error)
+  if (trim(varname)=='PSFC') then
+    if (localpet==0) print*,"- CALL FieldGather FOR TARGET GRID ", trim(varname)
+    call ESMF_FieldGather(field_write_2d(n), dum2d, rootPet=0, rc=error)
+    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+      call error_handler("IN FieldGather", error)
+
+  if (localpet==0) then
+
+    do i = 1,i_target
+      do j = 1,j_target
+           if (dum2d(i,j) < 1e-10_esmf_kind_r8) then
+              mask(i,j) = 0
+           end if
+      enddo
+    enddo
+   end if
+   exit
+   end if
+
+ end do
+
 !  hgt
 
  if (localpet==0)  print*,"- CALL FieldGather FOR TARGET GRID LATITUDE"
@@ -997,6 +1028,7 @@ if (localpet == 0) then
 
  if (localpet==0) print*,"- WRITE TO FILE TARGET GRID HGT"
  if (localpet ==0) then
+   call maskfield_2d(dum2d, j_target, i_target, mask)
    dum2dt(:,:,1) = dum2d
    error = nf90_put_var( ncid, id_hgt, dum2dt,count=(/i_target,j_target,1/))
    call netcdf_err(error, 'WRITING HGT RECORD' )
@@ -1063,6 +1095,7 @@ if (localpet == 0) then
 
     if (localpet==0) then
         print*, "- WRITE TO FILE ", trim(varname)
+        call maskfield_2d(dum2d, j_target, i_target, mask) 
         dum2dt(:,:,1) = dum2d
         error = nf90_put_var( ncid, id_vars2(i), dum2dt,count=(/i_target,j_target,1/))
         call netcdf_err(error, 'WRITING RECORD' )
@@ -1087,6 +1120,7 @@ if (localpet == 0) then
 
     if (localpet==0) then
         print*, trim(varname), minval(dum3d), maxval(dum3d)
+        call maskfield_3d(dum3d, nz_input, j_target, i_target, mask)
         dum3dt(:,:,:,1) = dum3d
         error = nf90_put_var( ncid, id_vars3_nz(i), dum3dt,count=(/i_target,j_target,nz_input,1/))
         call netcdf_err(error, 'WRITING RECORD' )
@@ -1116,6 +1150,7 @@ if (localpet == 0) then
 
         if (localpet==0) then
             print*, trim(varname), minval(dumsoil), maxval(dumsoil)
+            call maskfield_3d(dumsoil, nsoil_input, j_target, i_target, mask)
             dumsoilt(:,:,:,1) = dumsoil
             error = nf90_put_var( ncid, id_vars_soil(i), dumsoilt,count=(/i_target,j_target,nsoil_input,1/))
             call netcdf_err(error, 'WRITING RECORD' )
@@ -1169,6 +1204,7 @@ if (localpet == 0) then
                     enddo
                     enddo
                 else
+                    call maskfield_3d(dum3d, nz_input, j_target, i_target, mask)
                     dum3dt(:,:,:,1) = dum3d(:,:,:)
                 endif
                 print*, trim(varname), minval(dum3dt), maxval(dum3dt)
@@ -1239,6 +1275,7 @@ if (localpet == 0) then
                 dum3dp1 = dum3dp1 * 9.81
             endif
 
+            call maskfield_3d(dum3dp1, nzp1_input, j_target, i_target, mask)
             print*, trim(varname), minval(dum3dp1), maxval(dum3dp1)
             dum3dp1t(:,:,:,1) = dum3dp1
             error = nf90_put_var( ncid, id_vars3_nzp1(i), dum3dp1t, &
@@ -1276,6 +1313,7 @@ if (localpet == 0) then
         if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
           call error_handler("IN FieldGather", error)
     if (localpet==0) then
+        call maskfield_3d(dum3d, nz_input, j_target, i_target, mask)
         print*, trim(varname), minval(dum3d), maxval(dum3d)
         dum3dt(:,:,:,1) = dum3d
         error = nf90_put_var( ncid, id_vars3_vert(i),dum3dt,count=(/i_target,j_target,nz_input,1/))
@@ -1350,5 +1388,51 @@ if (localpet == 0) then
         read(res,*) val
 
     endfunction
+
+ subroutine maskfield_2d(array_in, ny_in, nx_in, mask)
+    use esmf
+
+    implicit none
+    integer, intent(IN)               :: ny_in, nx_in 
+    real(esmf_kind_r8), intent(INOUT)    :: array_in(nx_in,ny_in)
+    integer, intent(IN)               :: mask(nx_in,ny_in)
+    real(ESMF_KIND_R8)                :: missing_value_r8=9.99e20
+    integer                           :: i,j
+
+    do j = 1,ny_in
+      do i = 1,nx_in
+        if (mask(i,j) == 0) then
+!             print *,'jdong ',i,j
+             array_in(i,j)=missing_value_r8 
+        end if
+      end do
+    end do
+
+
+ end subroutine maskfield_2d
+
+ subroutine maskfield_3d(array_in, nz_in, ny_in, nx_in, mask)
+    use esmf
+
+    implicit none
+    integer, intent(IN)               :: ny_in, nx_in,nz_in
+    real(esmf_kind_r8), intent(INOUT)    :: array_in(nx_in,ny_in,nz_in)
+    integer, intent(IN)               :: mask(nx_in,ny_in)
+    real(ESMF_KIND_R8)                :: missing_value_r8=9.99e20
+    integer                           :: i,j,k
+
+  do k=1,nz_in
+    do j = 1,ny_in
+      do i = 1,nx_in
+        if (mask(i,j) == 0) then
+             array_in(i,j,k)=missing_value_r8
+        end if
+      end do
+    end do
+   end do
+
+
+ end subroutine maskfield_3d
+
 
  end module write_data
