@@ -1,9 +1,8 @@
 module utils_mod
 
-implicit none
+    implicit none
 
-
- integer, parameter,public :: DEBUG=0, INFORM=1, WARN=2, ERROR_CODE=3
+    integer, parameter, public :: DEBUG = 0, INFORM = 1, WARN = 2, ERROR_CODE = 3
 
 contains
 !> @file
@@ -14,49 +13,49 @@ contains
 !!
 !! @param[in] string  error message
 !! @param[in] rc      error status code
- subroutine error_handler(string, rc)
+    subroutine error_handler(string, rc)
 
- use mpi
+        use mpi
 
- implicit none
+        implicit none
 
- character(len=*), intent(in)    :: string
- 
- integer,          intent(in)    :: rc
+        character(len=*), intent(in)    :: string
 
- integer :: ierr
+        integer, intent(in)    :: rc
 
- print*,"- FATAL ERROR: ", string
- print*,"- IOSTAT IS: ", rc
- call mpi_abort(mpi_comm_world, 999, ierr)
+        integer :: ierr
 
- end subroutine error_handler
+        print *, "- FATAL ERROR: ", string
+        print *, "- IOSTAT IS: ", rc
+        call mpi_abort(mpi_comm_world, 999, ierr)
+
+    end subroutine error_handler
 
 !> Error handler for netcdf
 !!
 !! @param[in] err     error status code
 !! @param[in] string  error message
- subroutine netcdf_err( err, string )
+    subroutine netcdf_err(err, string)
 
- use mpi
- use netcdf
+        use mpi
+        use netcdf
 
- implicit none
- integer, intent(in) :: err
- character(len=*), intent(in) :: string
- character(len=256) :: errmsg
- integer :: iret
+        implicit none
+        integer, intent(in) :: err
+        character(len=*), intent(in) :: string
+        character(len=256) :: errmsg
+        integer :: iret
 
- if( err.EQ.NF90_NOERR )return
- errmsg = NF90_STRERROR(err)
- print*,''
- print*,'FATAL ERROR: ', trim(string), ': ', trim(errmsg)
- print*,'STOP.'
- call mpi_abort(mpi_comm_world, 999, iret)
+        if (err .EQ. NF90_NOERR) return
+        errmsg = NF90_STRERROR(err)
+        print *, ''
+        print *, 'FATAL ERROR: ', trim(string), ': ', trim(errmsg)
+        print *, 'STOP.'
+        call mpi_abort(mpi_comm_world, 999, iret)
 
- return
- end subroutine netcdf_err
- 
+        return
+    end subroutine netcdf_err
+
 !> Convert string from lower to uppercase.
 !! @author Clive Page
 !!
@@ -64,22 +63,22 @@ contains
 !!
 !! @param[in] strIn   string to convert
 !! @return strOut string in uppercase
-function to_upper(strIn) result(strOut)
+    function to_upper(strIn) result(strOut)
 
-     implicit none
+        implicit none
 
-     character(len=*), intent(in) :: strIn
-     character(len=len(strIn)) :: strOut
-     integer :: i,j
+        character(len=*), intent(in) :: strIn
+        character(len=len(strIn)) :: strOut
+        integer :: i, j
 
-     do i = 1, len(strIn)
-          j = iachar(strIn(i:i))
-          if (j>= iachar("a") .and. j<=iachar("z") ) then
-               strOut(i:i) = achar(iachar(strIn(i:i))-32)
-          else
-               strOut(i:i) = strIn(i:i)
-          end if
-     end do
+        do i = 1, len(strIn)
+            j = iachar(strIn(i:i))
+            if (j >= iachar("a") .and. j <= iachar("z")) then
+                strOut(i:i) = achar(iachar(strIn(i:i)) - 32)
+            else
+                strOut(i:i) = strIn(i:i)
+            end if
+        end do
 
 end function to_upper
 
