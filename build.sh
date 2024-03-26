@@ -5,17 +5,12 @@
 set -eux
 
 target=${1:-"NULL"}
-compiler=${compiler:-"gnu"}
+compiler=${compiler:-"intel"}
 echo $target, $compiler
 if [[ "$target" == "linux.*" || "$target" == "macosx.*" ]]; then
     unset -f module
     set +x
     source ./modulefiles/build.$target > /dev/null
-    set -x
-elif [[ "$compiler" == "gnu" ]]; then
-    set +x
-    source ./machine-setup.sh
-    source ./modulefiles/build.${target}.${compiler} > /dev/null
     set -x
 else
     set +x
