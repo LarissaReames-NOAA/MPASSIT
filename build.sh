@@ -16,12 +16,15 @@ fi
 echo "target=$target, compiler=$compiler"
 
 # Check for platform/compiler configuration file
-if [[ ! -f modulefiles/build.$target && ! -f modulefiles/build.$target.$compiler.lua ]]; then
+if [[ ! -f modulefiles/build.$target && ! -f modulefiles/build.$target.$compiler.lua && ! -f modulefiles/build.$target.$compiler ]]; then
     echo "Platform ${target} configuration file not found in ./modulefiles, neither build.$target nor build.$target.$compiler.lua"
     exit 1
 fi
 
-if [[ "$target" == "linux.*" || "$target" == "macosx.*" ]]; then
+if [[ "$target" == "vecna" || "$compiler" == "gnu" ]]; then
+    echo "Use platform configuration file: build.$target.$compiler"
+    source ./modulefiles/build.$target.$compiler > /dev/null
+elif [[ "$target" == "linux.*" || "$target" == "macosx.*" ]]; then
     unset -f module
     echo "Use platform configuration file: build.$target"
     source ./modulefiles/build.$target > /dev/null
