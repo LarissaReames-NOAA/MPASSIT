@@ -738,7 +738,7 @@ contains
                     if (localpet == 0) then
                         if (wrf_mod_vars .and. trim(varname) == 'U') then
                             print *, "- DEFINE ON FILE STAGGERED TARGET GRID ", varname
-                   error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon_stag, dim_lat, dim_z, dim_time/), id_vars3_nz(i + n3d))
+                            error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon_stag, dim_lat, dim_z, dim_time/), id_vars3_nz(i + n3d))
                             call netcdf_err(error, 'DEFINING VAR')
                             error = nf90_put_att(ncid, id_vars3_nz(i + n3d), "MemoryOrder", "XYZ ")
                             call netcdf_err(error, 'DEFINING MEMORYORDER')
@@ -754,7 +754,7 @@ contains
                             call netcdf_err(error, 'DEFINING FieldType')
                         elseif (wrf_mod_vars .and. trim(varname) == 'V') then
                             print *, "- DEFINE ON FILE STAGGERED TARGET GRID ", varname
-                   error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon, dim_lat_stag, dim_z, dim_time/), id_vars3_nz(i + n3d))
+                            error = nf90_def_var(ncid, varname, NF90_FLOAT, (/dim_lon, dim_lat_stag, dim_z, dim_time/), id_vars3_nz(i + n3d))
                             call netcdf_err(error, 'DEFINING VAR')
                             error = nf90_put_att(ncid, id_vars3_nz(i + n3d), "MemoryOrder", "XYZ ")
                             call netcdf_err(error, 'DEFINING MEMORYORDER')
@@ -1342,8 +1342,8 @@ contains
             end do
             deallocate (fields)
         end if
-        !    3d hist fields iniitially defined on vertices
 
+        !    3d hist fields initially defined on vertices
         if (interp_hist .and. n_hist_fields_3d_vert > 0) then
             allocate (fields(n_hist_fields_3d_vert))
             if (localpet == 0) print *, "Loop writing over ", n_hist_fields_3d_vert, "3-d vert vars"
@@ -1352,32 +1352,27 @@ contains
                                      rc=error)
             if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
                 call error_handler("IN FieldBundleGet", error)
-            do i = 1, n_hist_fields_3d_vert
-                call ESMF_FieldGet(fields(i), name=varname, rc=error)
-                if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGet", error)
-                if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID ", trim(varname)
-                call ESMF_FieldGather(fields(i), dum3d, rootPet=0, rc=error)
-                if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-                    call error_handler("IN FieldGather", error)
-                if (localpet == 0) then
-                    print *, trim(varname), minval(dum3d), maxval(dum3d)
-                    dum3dt(:, :, :, 1) = dum3d
-                    error = nf90_put_var(ncid, id_vars3_vert(i), dum3dt, count=(/i_target, j_target, nz_input, 1/))
-                    call netcdf_err(error, 'WRITING RECORD')
-                end if
-            end do
+                do i = 1, n_hist_fields_3d_vert
+                    call ESMF_FieldGet(fields(i), name=varname, rc=error)
+                    if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
+                        call error_handler("IN FieldGet", error)
+                    if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID ", trim(varname)
+                    call ESMF_FieldGather(fields(i), dum3d, rootPet=0, rc=error)
+                    if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
+                        call error_handler("IN FieldGather", error)
+                    if (localpet == 0) then
+                        print *, trim(varname), minval(dum3d), maxval(dum3d)
+                        dum3dt(:, :, :, 1) = dum3d
+                        error = nf90_put_var(ncid, id_vars3_vert(i), dum3dt, count=(/i_target, j_target, nz_input, 1/))
+                        call netcdf_err(error, 'WRITING RECORD')
+                    end if
+                end do
         end if
 
-        !    3d dummy fields
-
-        !if (n3d > 0) then
-        !    print *, "Loop writing over ", n3d, "3-d nz vars"
-        !    do i = 1, n3d
-        varname = 'P'
-
-        if (localpet == 0) then
-            print *, "- CALL FieldGather FOR TARGET GRID ", trim(varname)
+        !    3d P fields
+        IF (wrf_mod_vars .AND. localpet == 0) THEN
+            varname = 'P'
+            print *, "- SET DUMMY VALUES FOR TARGET GRID ", trim(varname)
 
             dum3d = 0.0
             print *, trim(varname), minval(dum3d), maxval(dum3d)
@@ -1385,8 +1380,6 @@ contains
             error = nf90_put_var(ncid, id_dummy3d_p, dum3dt, count=(/i_target, j_target, nz_input, 1/))
             call netcdf_err(error, 'WRITING RECORD')
         end if
-        !    end do
-        !end if
 
         deallocate (dum3d, dum3dp1, dum3dt, dum3dp1t, dum1d)
         deallocate (id_vars2, id_vars3_nz, id_vars3_nzp1, id_vars3_vert, id_vars_soil)
