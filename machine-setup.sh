@@ -77,6 +77,9 @@ elif [[ -L /usrx && "$( readlink /usrx 2> /dev/null )" =~ dell ]] ; then
     fi
     target=wcoss_dell_p3
     module purge
+elif [[ "$(hostname)" == derecho* ]]; then
+    target=derecho
+    module purge
 elif [[ -d /glade ]] ; then
     # We are on NCAR Cheyenne
     if ( ! eval module help > /dev/null 2>&1 ) ; then
@@ -125,6 +128,9 @@ elif [[ -d /lustre && -d /ncrc ]] ; then
     target=gaea
 elif [[ "$(hostname)" =~ "Orion" ]]; then
     target="orion"
+    module purge
+elif [[ "$(hostname)" =~ "hercules" ]]; then
+    target="hercules"
     module purge
 elif [[ "$(hostname)" =~ "ln" ]]; then
     source /scratch/ywang/tools/lmod/lmod/init/bash
