@@ -162,17 +162,17 @@
 
     call ESMF_FieldGet(fields(i), name=vname, rc=rc)
     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-     call error_handler("IN FieldGet", rc)
+    call error_handler("IN FieldGet", rc)
     
     if (localpet==0) print*,"- READ ", trim(vname)
     error=nf90_inq_varid(ncid, trim(vname), id_var)
-    call netcdf_err(error, 'reading field id' )
+    call netcdf_err(error, 'reading field id - '//trim(vname) )
     error=nf90_inquire_variable(ncid, id_var, ndims=ndims)
     call netcdf_err(error, 'reading variable dims' )
     if (ndims == 2) then
       call ESMF_FieldGet(fields(i), farrayPtr=varptr, rc=rc)
-      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-        call error_handler("IN FieldGet", rc)
+      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
       error=nf90_get_var(ncid, id_var, dummy)
       call netcdf_err(error, 'reading field' )
       if (localpet==0) print*,"- SET ON MESH ", trim(vname)
