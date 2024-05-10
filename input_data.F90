@@ -19,8 +19,9 @@
  use program_setup, only          : hist_file_input_grid, &
                                     diag_file_input_grid, &
                                     grid_file_input_grid, &
-                                    interp_diag, interp_hist
-
+                                    interp_diag, interp_hist, &
+                                    wrf_mod_vars
+                                        
  use model_grid, only             : input_grid,        &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
@@ -73,12 +74,16 @@
                                     n_hist_fields_3d_vert, &
                                     n_hist_fields_soil, &
                                     elemIDs, nCellsPerPET, &
-                                    nodeIDs,diag_out_interval
-
+                                    nodeIDs,diag_out_interval, &
+                                    u_input_grid, &
+                                    v_input_grid, &
+                                    do_u_interp, &
+                                    do_v_interp
  implicit none
 
  private
  public :: read_input_data
+ 
                                          
  contains
 
@@ -644,6 +649,47 @@
      deallocate(fields)
  endif
 
+!---------------------------------------------------------------------------
+! Initialize 3d esmf atmospheric fields U and V if requested
+!---------------------------------------------------------------------------
+ if (do_u_interp==1) then
+    allocate(dummy3(nz_input,nCells_input,1))
+    call ESMF_fieldGet(u_input_grid, farrayPtr=varptr2,rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    if (localpet==0) print*, "- READ uReconstructZonal "
+    error=nf90_inq_varid(ncid, "uReconstructZonal", id_var)
+    call netcdf_err(error, 'reading field id' )
+    error=nf90_get_var(ncid, id_var, dummy3)
+    call netcdf_err(error, 'reading field' )
+
+    if (localpet==0) print*,"- SET ON MESH uReconstructZonal"
+    do j = 1, nCellsPerPET
+          varptr2(j,:) = dummy3(:,elemIDs(j),1)
+    enddo 
+    nullify(varptr2)
+    deallocate(dummy3)
+ endif
+
+  if (do_v_interp==1) then
+    allocate(dummy3(nz_input,nCells_input,1))
+    call ESMF_fieldGet(v_input_grid, farrayPtr=varptr2,rc=rc)
+     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldGet", rc)
+    if (localpet==0) print*, "- READ uReconstructMeridional "
+    error=nf90_inq_varid(ncid, "uReconstructMeridional", id_var)
+    call netcdf_err(error, 'reading field id' )
+    error=nf90_get_var(ncid, id_var, dummy3)
+    call netcdf_err(error, 'reading field' )
+
+    if (localpet==0) print*,"- SET ON MESH uReconstructMeridional"
+    do j = 1, nCellsPerPET
+       varptr2(j,:) = dummy3(:,elemIDs(j),1)
+    enddo
+    nullify(varptr2)
+    deallocate(dummy3)
+ endif 
+
 !-------------------------------------------------------------------------------
 ! Initialize 3d esmf atmospheric fields with nVertLevels+1 vertical dimension
 !-------------------------------------------------------------------------------
@@ -774,7 +820,7 @@
                                      input_hist_names_3d_nzp1(:), &
                                      input_hist_names_3d_vert(:), &
                                      target_hist_names_2d(:), &
-                                     target_hist_names_3d(:)
+                                     target_hist_names_3d(:) 
     type(esmf_field), allocatable :: fields(:)
     character(50)                 :: cons_vars(2), nstd_vars(4), nzp1_vars(2), &
                                      vert_vars(1)
@@ -835,9 +881,15 @@
             target_hist_names_2d_patch(n) = target_hist_names_2d(i)
         endif
     enddo
-    
     do i = 1, n_hist_fields_3d
-        if (any(nzp1_vars == input_hist_names_3d(i))) then
+        if(localpet==0) print*, i
+        if (wrf_mod_vars .and. input_hist_names_3d(i)=="uReconstructZonal") then
+           do_u_interp = 1
+           cycle
+        elseif ( wrf_mod_vars .and. input_hist_names_3d(i)=="uReconstructMeridional") then
+           do_v_interp = 1
+           cycle
+        elseif (any(nzp1_vars == input_hist_names_3d(i))) then
             n_hist_fields_3d_nzp1 = n_hist_fields_3d_nzp1 + 1
         elseif (any(vert_vars == input_hist_names_3d(i))) then
             n_hist_fields_3d_vert = n_hist_fields_3d_vert + 1
@@ -856,8 +908,36 @@
     j = 0
     k = 0
     n = 0
+    if (do_u_interp==1) then
+       if (localpet==0) print*, "- INIT FIELD uReconstructZonal"
+       u_input_grid = ESMF_FieldCreate(input_grid, &
+                            typekind=ESMF_TYPEKIND_R8, &
+                            meshloc=ESMF_MESHLOC_ELEMENT, &
+                            name="uReconstructZonal", &
+                            ungriddedLBound=(/1/), &
+                            ungriddedUBound=(/nz_input/), rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+    endif
+
+    if (do_v_interp==1) then
+       if (localpet==0) print*, "- INIT FIELD uReconstructMeridonal"
+       v_input_grid = ESMF_FieldCreate(input_grid, &
+                            typekind=ESMF_TYPEKIND_R8, &
+                            meshloc=ESMF_MESHLOC_ELEMENT, &
+                            name="uReconstructMeridonal", &
+                            ungriddedLBound=(/1/), &
+                            ungriddedUBound=(/nz_input/), rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+            call error_handler("IN FieldCreate", rc)
+    endif
     do i = 1, n_hist_fields_3d
-        if (any(nzp1_vars == input_hist_names_3d(i))) then
+        if(localpet==0) print*, i, input_hist_names_3d(i)
+        if (do_u_interp==1 .and. input_hist_names_3d(i)=="uReconstructZonal") then
+           cycle
+        elseif (do_v_interp==1 .and. input_hist_names_3d(i) == "uReconstructMeridional") then 
+           cycle
+        elseif (any(nzp1_vars == input_hist_names_3d(i))) then
             j = j+1
             input_hist_names_3d_nzp1(j) = input_hist_names_3d(i)
             target_hist_names_3d_nzp1(j) = target_hist_names_3d(i)
@@ -879,7 +959,7 @@
         allocate(fields(n_hist_fields_2d_cons))
         do i = 1, n_hist_fields_2d_cons
     
-            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_cons(i)
+            if (localpet==0) print*, "- INIT 2D CONSERVATIVE FIELD ", input_hist_names_2d_cons(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -901,7 +981,7 @@
         allocate(fields(n_hist_fields_2d_nstd))
         do i = 1, n_hist_fields_2d_nstd
     
-            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_nstd(i)
+            if (localpet==0) print*, "- INIT 2D NEAREST FIELD ", input_hist_names_2d_nstd(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -924,7 +1004,7 @@
         allocate(fields(n_hist_fields_2d_patch))
         do i = 1, n_hist_fields_2d_patch
     
-            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_2d_patch(i)
+            if (localpet==0) print*, "- INIT 2D BILINEAR FIELD ", input_hist_names_2d_patch(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -947,7 +1027,7 @@
         allocate(fields(n_hist_fields_soil))
         do i = 1, n_hist_fields_soil
     
-            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_soil(i)
+            if (localpet==0) print*, "- INIT SOIL FIELD ", input_hist_names_soil(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -971,7 +1051,7 @@
         allocate(fields(n_hist_fields_3d_nz))
         do i = 1, n_hist_fields_3d_nz
     
-            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_nz(i)
+            if (localpet==0) print*, "- INIT 3D NZ FIELD ",i, input_hist_names_3d_nz(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -995,7 +1075,7 @@
         allocate(fields(n_hist_fields_3d_nzp1))
         do i = 1, n_hist_fields_3d_nzp1
     
-            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_nzp1(i)
+            if (localpet==0) print*, "- INIT 3D NZ+1 FIELD ",i, input_hist_names_3d_nzp1(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, & 
                                 typekind=ESMF_TYPEKIND_R8, &
@@ -1019,7 +1099,7 @@
         allocate(fields(n_hist_fields_3d_vert))
         do i = 1, n_hist_fields_3d_vert
 
-            if (localpet==0) print*, "- INIT FIELD ", input_hist_names_3d_vert(i)
+            if (localpet==0) print*, "- INIT 3D VERTICES FIELD ",i,  input_hist_names_3d_vert(i)
 
             fields(i) = ESMF_FieldCreate(input_grid, &
                                 typekind=ESMF_TYPEKIND_R8, &

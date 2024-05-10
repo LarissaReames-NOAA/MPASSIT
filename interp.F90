@@ -29,6 +29,10 @@
                                     cell_longitude_input_grid, &
                                     zgrid_input_grid, &
                                     zgrid_target_grid, &
+                                    u_input_grid, &
+                                    u_target_grid, &
+                                    v_input_grid, &
+                                    v_target_grid, &
                                     hgt_input_grid, hgt_target_grid, &
                                     target_diag_bundle, &
                                     target_diag_names, &
@@ -62,8 +66,9 @@
                                     n_hist_fields_3d_nz, &
                                     n_hist_fields_3d_nzp1, &
                                     n_hist_fields_3d_vert, &
-                                    n_hist_fields_soil
-
+                                    n_hist_fields_soil, &
+                                    do_u_interp, &
+                                    do_v_interp 
  implicit none
 
  private
@@ -238,8 +243,42 @@
         call error_handler("IN FieldBundleRegrid", rc)
     endif
 
+    if (do_u_interp==1) then
+       if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
+        
+       call ESMF_FieldRegridStore(u_input_grid,u_target_grid, &
+                                        regridmethod=method, &
+                                        routehandle=rh_patch, &
+                                        srcTermProcessing=isrctermprocessing, &
+                                        unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                        rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldRegridStore", rc)
+
+       call ESMF_FieldRegrid(u_input_grid,u_target_grid, rh_patch, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldRegrid", rc)
+    endif
+
+    if (do_v_interp==1) then
+       if (localpet==0) print*, "- CREATE REGRID uReconstructMeridional ROUTEHANDLE"
+
+       call ESMF_FieldRegridStore(v_input_grid,v_target_grid, &
+                                        regridmethod=method, &
+                                        routehandle=rh_patch, &
+                                        srcTermProcessing=isrctermprocessing, &
+                                        unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                        rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldRegridStore", rc)
+
+       call ESMF_FieldRegrid(v_input_grid,v_target_grid, rh_patch, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldRegrid", rc)
+    endif
+
     if (n_hist_fields_3d_nzp1>0) then
-       if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
+        if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
 
        call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, &
                                          regridmethod=method, &
@@ -379,7 +418,7 @@
     implicit none
 
     integer, intent(in)          :: localpet
-    integer                      :: i, rc
+    integer                      :: i, n, rc
     character(50), allocatable   :: field_names(:)
     type(esmf_field),allocatable :: fields(:)
 
@@ -391,6 +430,29 @@
                               name='HGT', rc=rc)
     if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
       call error_handler("IN FieldCreate", rc)
+
+    if (do_u_interp==1) then
+         if (localpet==0) print*, "- INIT FIELD U"
+         u_target_grid = ESMF_FieldCreate(target_grid, &
+                             typekind=ESMF_TYPEKIND_R8, &
+                             staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                             name=target_hist_names_2d_cons(i), & 
+                             ungriddedLBound=(/1/), &
+                             ungriddedUBound=(/nz_input/),rc=rc)
+         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldCreate", rc)
+    endif
+    if(do_v_interp) then
+         if (localpet==0) print*, "- INIT FIELD V"
+         v_target_grid = ESMF_FieldCreate(target_grid, &
+                            typekind=ESMF_TYPEKIND_R8, &
+                            staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                            name=target_hist_names_2d_cons(i), &
+                             ungriddedLBound=(/1/), &
+                             ungriddedUBound=(/nz_input/), rc=rc)
+         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldCreate", rc)
+    endif
 
     if (localpet==0) print*,"- INITIALIZE TARGET 2D CONS HIST FIELDS."
 

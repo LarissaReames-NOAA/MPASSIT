@@ -84,22 +84,29 @@
  type(esmf_field),  public              :: node_longitude_input_grid
                                            !< longitude of grid center, input grid
 
-  type(esmf_field),  public              :: zgrid_input_grid
+ type(esmf_field),  public              :: zgrid_input_grid
                                            !< esmf field to hold level height on input grid
-  type(esmf_field),  public              :: zgrid_target_grid
+ type(esmf_field),  public              :: zgrid_target_grid
                                            !< esmf field to hold level height on target grid
-
+ type(esmf_field),  public              :: u_input_grid
+                                           !< esmf field to hold u wind on the input grid
+ type(esmf_field),  public              :: u_target_grid
+                                           !< esnf field to hold u wind on the target grid
+ type(esmf_field),  public              :: v_input_grid
+                                           !< esmf field to hold v wind on the input grid
+ type(esmf_field),  public              :: v_target_grid
+                                           !< esmf field to hold v wind on the target grid
  type(esmf_field),  public              :: latitude_target_grid
                                            !< latitude of grid center, target grid
  type(esmf_field),  public              :: longitude_target_grid
                                            !< longitude of grid center, target grid
-  type(esmf_field),  public              :: latitude_u_target_grid
+ type(esmf_field),  public              :: latitude_u_target_grid
                                            !< latitude of grid u stagger, target
                                            !grid
  type(esmf_field),  public              :: longitude_u_target_grid
                                            !< longitude of grid u stagger, target
                                            !grid
-  type(esmf_field),  public              :: latitude_v_target_grid
+ type(esmf_field),  public              :: latitude_v_target_grid
                                            !< latitude of grid v stagger, target
                                            !grid
  type(esmf_field),  public              :: longitude_v_target_grid
@@ -109,13 +116,13 @@
                                           !< soil center depth, target grid
  type(esmf_field), public               :: hgt_input_grid, hgt_target_grid
                                           !< surface elevation, target grid
-  type(esmf_field),  public              :: mapfac_m_target_grid
+ type(esmf_field),  public              :: mapfac_m_target_grid
                                           !< target grid map factor at grid
                                           ! center 
  type(esmf_field),  public              :: mapfac_u_target_grid
                                           !< target grid map factor at u stagger
                                           ! points
-  type(esmf_field),  public              :: mapfac_v_target_grid
+ type(esmf_field),  public              :: mapfac_v_target_grid
                                           !< target grid map factor at v stagger
                                           ! points
  integer, public                       :: n_diag_fields
@@ -146,11 +153,15 @@
  integer, public                       :: n_hist_fields_3d_nzp1
                                           !< number of 3d fields read from the hist file
                                           !< with vertical dimension nVertLevelsp1
- integer, public                      :: n_hist_fields_soil
+ integer, public                       :: n_hist_fields_soil
                                           !< number of soil fields read from the hist file
-
  integer, public                       :: diag_out_interval
-                                         !< output_interval from diag file
+                                          !< output_interval from diag file
+ integer, public                       :: do_u_interp           
+                                          !< whether 3d u is requested for interpolation
+ integer, public                       :: do_v_interp           
+                                          !< whether 3d v is requested for interpolation
+
  character(50), allocatable, public    :: target_diag_names(:), &
                                           target_hist_names_2d_cons(:), &
                                           target_hist_names_2d_nstd(:), &
@@ -735,7 +746,7 @@ enddo
  allocate(mapfac_u_one(clb(1):cub(1),clb(2):cub(2))) 
  call get_lat_lon_fields(latitude_u_one, longitude_u_one, clb(1),clb(2),cub(1),cub(2), U)
  call get_map_factor(latitude_u_one, longitude_u_one, mapfac_u_one, mapfac_u_one, clb(1),clb(2),cub(1),cub(2))
- 
+  
  !corner
 call ESMF_GridGetCoord(target_grid, &
                           staggerLoc=ESMF_STAGGERLOC_CORNER, &
@@ -939,6 +950,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
       enddo
  enddo
 
+ nullify(lon_src_ptr,lat_src_ptr)
  if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE1 X-COORD."
  call ESMF_GridGetCoord(target_grid, &
                         staggerLoc=ESMF_STAGGERLOC_EDGE1, &
@@ -957,14 +969,15 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
                         farrayPtr=lat_src_ptr, rc=error)
  if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
     call error_handler("IN GridGetCoord", error)
-
+ 
  do j = clb(2),cub(2)
       do i = clb(1), cub(1)
           lon_src_ptr(i,j)=longitude_u_one(i,j)
           lat_src_ptr(i,j)=latitude_u_one(i,j)
       enddo
  enddo
-
+ 
+ nullify(lon_src_ptr,lat_src_ptr)
 if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE2 X-COORD."
  call ESMF_GridGetCoord(target_grid, &
                         staggerLoc=ESMF_STAGGERLOC_EDGE2, &
