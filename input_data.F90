@@ -75,6 +75,7 @@
                                     n_hist_fields_soil, &
                                     elemIDs, nCellsPerPET, &
                                     nodeIDs,diag_out_interval, &
+                                    nNodesPerPET, &
                                     u_input_grid, &
                                     v_input_grid, &
                                     do_u_interp, &
@@ -784,8 +785,8 @@
         call netcdf_err(error, 'reading field long_name' )
 
         if (localpet==0) print*,"- SET ON MESH ", trim(vname)
-        do j = 1, nCellsPerPET
-            varptr2(j,:) = dummy3(:,elemIDs(j),1)
+        do j = 1, nNodesPerPET
+            varptr2(j,:) = dummy3(:,nodeIDs(j),1)
         enddo
 
         nullify(varptr2)

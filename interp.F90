@@ -436,7 +436,7 @@
          u_target_grid = ESMF_FieldCreate(target_grid, &
                              typekind=ESMF_TYPEKIND_R8, &
                              staggerloc=ESMF_STAGGERLOC_EDGE1, &
-                             name=target_hist_names_2d_cons(i), & 
+                             name="U", & 
                              ungriddedLBound=(/1/), &
                              ungriddedUBound=(/nz_input/),rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
@@ -447,7 +447,7 @@
          v_target_grid = ESMF_FieldCreate(target_grid, &
                             typekind=ESMF_TYPEKIND_R8, &
                             staggerloc=ESMF_STAGGERLOC_EDGE2, &
-                            name=target_hist_names_2d_cons(i), &
+                            name="V", &
                              ungriddedLBound=(/1/), &
                              ungriddedUBound=(/nz_input/), rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
