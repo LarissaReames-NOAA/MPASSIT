@@ -35,6 +35,7 @@ else
     module list
 fi
 
+export debug=true
 CMAKE_FLAGS="-DCMAKE_INSTALL_PREFIX=../ -DEMC_EXEC_DIR=ON -DBUILD_TESTING=OFF"
 if [[ "$compiler" == "intel" ]]; then
     CMAKE_FLAGS="${CMAKE_FLAGS} -DCMAKE_C_COMPILER=icc -DCMAKE_CXX_COMPILER=icpc -DCMAKE_Fortran_COMPILER=ifort"
