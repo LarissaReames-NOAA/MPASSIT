@@ -50,6 +50,7 @@ Input/namelist:
   diag_file_input_grid="/scratch/wof/mpas/diag.2019-05-18_00.00.00.nc"
   file_target_grid="/scratch/wicker/27April2011/ICs/wrfinput_d01"
   output_file="/scratch/larissa.reames/out_hist_diag.nc"
+  block_decomp_file="/scratch/wof/mpas/wofs_mpas.graph.info.part.120"
   target_grid_type = 'lambert'
   interp_diag=.true.
   interp_hist=.true.
@@ -82,6 +83,8 @@ is_regional: Whether the target grid is regional or not (default:.true.)
 
 output_file : Full path of output file
 
+block_decomp_file : Full path to the MPAS grid-specific block decomposition file
+
 interp_diag : Whether to interpolate fields from the diag file (T/F)
 
 interp_hist : Whether to interpolate fields from the hist file (T/F)
@@ -96,9 +99,9 @@ nx : The number of target grid points in the east-west direction
 
 ny : The number of target grid pointers in the north-south direction
 
-dx : Grid size (meters) in the east-west direction
+dx : Grid size (meters, or deg for target_grid_type='lat-lon') in the east-west direction
 
-dy : Grid size (meters) in the north-south direction
+dy : Grid size (meters, or deg for target_grid_type='lat-lon') in the north-south direction
 
 ref_lat : Reference latitude of the target grid projection
 

@@ -96,7 +96,7 @@
     call error_handler("IN VMGet", ierr)
 
  if (localpet==0) print*,'- NPETS IS  ',npets
- print*,'- LOCAL PET ',localpet
+ !print*,'- LOCAL PET ',localpet
 
 !-------------------------------------------------------------------------
 ! Read program configuration namelist.

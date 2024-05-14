@@ -84,22 +84,29 @@
  type(esmf_field),  public              :: node_longitude_input_grid
                                            !< longitude of grid center, input grid
 
-  type(esmf_field),  public              :: zgrid_input_grid
+ type(esmf_field),  public              :: zgrid_input_grid
                                            !< esmf field to hold level height on input grid
-  type(esmf_field),  public              :: zgrid_target_grid
+ type(esmf_field),  public              :: zgrid_target_grid
                                            !< esmf field to hold level height on target grid
-
+ type(esmf_field),  public              :: u_input_grid
+                                           !< esmf field to hold u wind on the input grid
+ type(esmf_field),  public              :: u_target_grid
+                                           !< esnf field to hold u wind on the target grid
+ type(esmf_field),  public              :: v_input_grid
+                                           !< esmf field to hold v wind on the input grid
+ type(esmf_field),  public              :: v_target_grid
+                                           !< esmf field to hold v wind on the target grid
  type(esmf_field),  public              :: latitude_target_grid
                                            !< latitude of grid center, target grid
  type(esmf_field),  public              :: longitude_target_grid
                                            !< longitude of grid center, target grid
-  type(esmf_field),  public              :: latitude_u_target_grid
+ type(esmf_field),  public              :: latitude_u_target_grid
                                            !< latitude of grid u stagger, target
                                            !grid
  type(esmf_field),  public              :: longitude_u_target_grid
                                            !< longitude of grid u stagger, target
                                            !grid
-  type(esmf_field),  public              :: latitude_v_target_grid
+ type(esmf_field),  public              :: latitude_v_target_grid
                                            !< latitude of grid v stagger, target
                                            !grid
  type(esmf_field),  public              :: longitude_v_target_grid
@@ -109,13 +116,13 @@
                                           !< soil center depth, target grid
  type(esmf_field), public               :: hgt_input_grid, hgt_target_grid
                                           !< surface elevation, target grid
-  type(esmf_field),  public              :: mapfac_m_target_grid
+ type(esmf_field),  public              :: mapfac_m_target_grid
                                           !< target grid map factor at grid
                                           ! center 
  type(esmf_field),  public              :: mapfac_u_target_grid
                                           !< target grid map factor at u stagger
                                           ! points
-  type(esmf_field),  public              :: mapfac_v_target_grid
+ type(esmf_field),  public              :: mapfac_v_target_grid
                                           !< target grid map factor at v stagger
                                           ! points
  integer, public                       :: n_diag_fields
@@ -146,11 +153,15 @@
  integer, public                       :: n_hist_fields_3d_nzp1
                                           !< number of 3d fields read from the hist file
                                           !< with vertical dimension nVertLevelsp1
- integer, public                      :: n_hist_fields_soil
+ integer, public                       :: n_hist_fields_soil
                                           !< number of soil fields read from the hist file
-
  integer, public                       :: diag_out_interval
-                                         !< output_interval from diag file
+                                          !< output_interval from diag file
+ integer, public                       :: do_u_interp           
+                                          !< whether 3d u is requested for interpolation
+ integer, public                       :: do_v_interp           
+                                          !< whether 3d v is requested for interpolation
+
  character(50), allocatable, public    :: target_diag_names(:), &
                                           target_hist_names_2d_cons(:), &
                                           target_hist_names_2d_nstd(:), &
@@ -229,7 +240,7 @@
  integer, allocatable                  :: elemTypes2(:), vertOnCell(:,:), &
                                           nodesPET(:), nodeIDs_temp(:), &
                                           elementConn_temp(:), elementConn(:), &
-                                          unique_nodes(:), node_pets(:)
+                                          unique_nodes(:),node_pets(:),myCells(:)
  real(esmf_kind_r8), allocatable       :: latCell(:), lonCell(:), &
                                           latVert(:), lonVert(:), &
                                           nodeCoords(:), &
@@ -237,7 +248,7 @@
                                           elemCoords(:), hgt(:)
  real(esmf_kind_r8), pointer           :: data_1d(:), data_1d2(:)
  real(esmf_kind_r8), parameter         :: PI=4.D0*DATAN(1.D0)
-
+ integer :: myCells_num
 
  the_file = grid_file_input_grid
 
@@ -265,12 +276,6 @@
  call netcdf_err(error, 'reading nVertices')
 
  nVert_input = nVertices
-
- nCellsPerPET = ceiling(real(nCells)/real(npets))
- cell_start = localpet*nCellsPerPET+1
- cell_end = min(localpet*nCellsPerPET+nCellsPerPET,nCells)
- nCellsPerPET = cell_end - cell_start + 1
-
  !Get nVertLevels size
  if (localpet==0) print*,'- READ nVertLevels'
  error = nf90_inq_dimid(ncid,'nVertLevels',id_dim)
@@ -303,15 +308,15 @@
  error=nf90_inquire_dimension(ncid,id_dim,len=nsoil_input)
  call netcdf_err(error, 'reading nSoilLevels')
  
- allocate(latCell(cell_start:cell_end))
- allocate(lonCell(cell_start:cell_end))
- allocate(hgt(cell_start:cell_end))
+ allocate(latCell(nCells))
+ allocate(lonCell(nCells))
+ allocate(hgt(nCells))
 
  allocate(latVert(nVertices))
  allocate(lonVert(nVertices))
 
  
- allocate(vertOnCell(maxEdges,cell_start:cell_end))
+ allocate(vertOnCell(maxEdges,nCells))
  allocate(zs_target_grid(nsoil_input,1))
 
  ! GET CELL CENTER LAT/LON
@@ -320,7 +325,7 @@
  call netcdf_err(error, 'reading lonCell id')
 
  if (localpet==0) print*,'- READ LONCELL'
- error=nf90_get_var(ncid, id_var, start=(/cell_start/), count=(/nCellsPerPET/),values=lonCell)
+ error=nf90_get_var(ncid, id_var, start=(/1/), count=(/nCells/),values=lonCell)
  call netcdf_err(error, 'reading lonCell')
 
  if (localpet==0) print*,'- READ LATCELL ID'
@@ -328,7 +333,7 @@
  call netcdf_err(error, 'reading latCell id')
 
  if (localpet==0) print*,'- READ LATCELL'
-  error=nf90_get_var(ncid, id_var, start=(/cell_start/), count=(/nCellsPerPET/),values=latCell)
+  error=nf90_get_var(ncid, id_var, start=(/1/), count=(/nCells/),values=latCell)
  call netcdf_err(error, 'reading latCell')
 
  ! GET VERTEX LAT/LON
@@ -360,7 +365,7 @@
  if (localpet==0) print*,'- READ HGT'
  error=nf90_inq_varid(ncid, 'ter', id_var)
  call netcdf_err(error, 'reading ter id')
- error=nf90_get_var(ncid, id_var, start=(/cell_start/),count=(/nCellsPerPET/), values=hgt)
+ error=nf90_get_var(ncid, id_var, start=(/1/),count=(/nCells/), values=hgt)
  call netcdf_err(error, 'reading ter')
 
  if (localpet==0) print*,"- NUMBER OF CELLS ON INPUT GRID ", nCells_input
@@ -378,67 +383,77 @@
  call netcdf_err(error, 'reading verticesOnCell dims')
 
  if (localpet==0) print*,'- READ verticesOnCell'
- error=nf90_get_var(ncid, id_var, start=(/1,cell_start/),count=(/maxEdges,nCellsPerPET/),values=vertOnCell)
+ error=nf90_get_var(ncid, id_var, start=(/1,1/),count=(/maxEdges,nCells/),values=vertOnCell)
  call netcdf_err(error, 'reading verticesOnCell')
 
  error = nf90_close(ncid)
 
- ! Allocate and fill element corner coordinate array.
- allocate(nodeCoords_temp(2*maxEdges*nCellsPerPET))
- allocate(nodeIDs_temp(maxEdges*nCellsPerPET))
+ nVertThis = 0
+ k = 0
+ if (block_decomp_file=='NULL') then
+     !nCellsPerPET = ceiling(real(nCells)/real(npets))
+     !cell_start = localpet*nCellsPerPET+1
+     !cell_end = min(localpet*nCellsPerPET+nCellsPerPET,nCells)
+     call para_range(1, nCells, npets, localpet, cell_start, cell_end)
+     nCellsPerPET = cell_end - cell_start + 1
+     allocate(elemIDs(nCellsPerPET))
+!$OMP PARALLEL DO $PRIVATE(i,j)
+     do i = cell_start, cell_end
+         j = i - cell_start + 1
+         elemIDs(j) = i
+     enddo
+!$OMP END PARALLEL DO
+ else
+     call read_block_decomp_file(localpet,block_decomp_file,nCells,elemIDs,nCellsPerPET)
+ endif
+
  allocate(elementConn_temp(maxEdges*nCellsPerPET))
  allocate(elemCoords(2*nCellsPerPET))
  allocate(elemTypes2(nCellsPerPET))
- allocate(elemIDs(nCellsPerPET))
-
- nVertThis = 0
- k = 0
-
+ 
  if (localpet==0) print*, "- Create PET-local element connectivity "
- do i = cell_start,cell_end
-    j = i - cell_start + 1
-    elemIDs(j) = i
-    elemTypes2(j) = 0
-    elemCoords(2*j-1) = lonCell(i)*180.0_esmf_kind_r8/PI
-    if (elemCoords(2*j-1) > 180.0_esmf_kind_r8) then
-        elemCoords(2*j-1) = elemCoords(2*j-1) - 360.0_esmf_kind_r8
+!$OMP PARALLEL DO $PRIVATE(i,j,n)
+ do i = 1,nCellsPerPET
+    j = elemIDs(i)
+    !elemIDs(j) = i
+    elemTypes2(i) = count(vertOnCell(:,elemIDs(i))/=0)
+    nVertThis = nVertThis + elemTypes2(i)
+    elemCoords(2*i-1) = lonCell(j)*180.0_esmf_kind_r8/PI
+    if (elemCoords(2*i-1) > 180.0_esmf_kind_r8) then
+        elemCoords(2*i-1) = elemCoords(2*i-1) - 360.0_esmf_kind_r8
     endif
-    elemCoords(2*j) = latCell(i)*180.0_esmf_kind_r8/PI
-    do n = 1,maxEdges
-        if (vertOnCell(n,i)>0) then
-            nVertThis = nVertThis + 1
-
-            ! Make sure we don't duplicate nodeIDs or nodeCoords on any PET
-            if (.not. any(nodeIDs_temp(1:k)==vertOnCell(n,i))) then
-                k = k+1
-                nodeCoords_temp(2*k-1) = &
-                    lonVert(vertOnCell(n,i)) *180.0_esmf_kind_r8/PI
-                if (nodeCoords_temp(2*k-1) > 180.0_esmf_kind_r8) then
-                    nodeCoords_temp(2*k-1)  =  &
-                        nodeCoords_temp(2*k-1) - 360.0_esmf_kind_r8
-                endif
-                nodeCoords_temp(2*k) = &
-                    latVert(vertOnCell(n,i))*180.0_esmf_kind_r8/PI
-
-                nodeIDs_temp(k) = vertOnCell(n,i)
-            endif
-
-            elemTypes2(j) = elemTypes2(j) + 1
-
-            temp = FINDLOC(nodeIDS_temp, vertOnCell(n,i))
-            elementConn_temp(nVertThis) = temp(1)
-
-        endif
-
-    enddo
+    elemCoords(i*2) = latCell(j)*180.0_esmf_kind_r8/PI
+    elementConn_temp(maxEdges*(i-1)+1:maxEdges*i) = vertOnCell(:,j)
  enddo
-
- allocate(nodeCoords(2*k), nodeIDs(k), elementConn(nVertThis))
- nodeCoords = nodeCoords_temp(1:k*2)
- nodeIDs = nodeIDs_temp(1:k)
- elementConn = elementConn_temp(1:nVertThis)
-
- if (localpet==0) print*, "- CREATE MESH -"
+!$OMP END PARALLEL DO
+ !allocate(nodeCoords(2*k), nodeIDs(k), elementConn(nVertThis))
+ call unique_sort(elementConn_temp,maxEdges*nCellsPerPET,nodeIDs)
+ nNodesPerPET=size(nodeIDs)
+ allocate(nodeCoords(2*nNodesPerPET))
+!$OMP PARALLEL DO 
+do j = 1,nNodesPerPET
+   i = nodeIDs(j)
+   nodeCoords(2*j-1) = lonVert(i)*180.0_esmf_kind_r8/PI
+   if (nodeCoords(2*j-1) > 180.0_esmf_kind_r8) then
+     nodeCoords(2*j-1) = nodeCoords(2*j-1) - 360.0_esmf_kind_r8
+   endif
+   nodeCoords(2*j) = latVert(i)*180.0_esmf_kind_r8/PI
+enddo
+!$OMP END PARALLEL DO
+allocate(elementConn(nVertThis))
+nVertThis = 0
+!$OMP PARALLEL DO
+do i = 1,nCellsPerPET
+ do j = 1,maxEdges
+   if(vertOnCell(j,i)/=0) then
+     temp = FINDLOC(nodeIDs,vertOnCell(j,elemIDs(i)))
+     elementConn(nVertThis+1) = temp(1)
+     nVertThis = nVertThis + 1
+   endif
+ enddo
+enddo
+!$OMP END PARALLEL DO
+  if (localpet==0) print*, "- CREATE MESH -"
  input_grid = ESMF_MeshCreate(parametricDim=2, &
                      spatialDim=2, &
                      nodeIDs= nodeIDs, &
@@ -455,9 +470,9 @@
 
  ! After the creation we are through with the arrays, so they may be deallocated.
  deallocate(elemCoords,elemTypes2)
- deallocate(nodeCoords_temp, nodeCoords)
+ deallocate(nodeCoords)
  deallocate(elementConn_temp, elementConn)
- deallocate(nodeIDs_temp)
+ !deallocate(nodeIDs_temp)
 
 
  !-----------------------------------------------------------------------
@@ -491,11 +506,11 @@
   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
     call error_handler("IN FieldGet", error)
 
- j = 1
- do i = cell_start, cell_end
+ 
+ do j = 1, nCellsPerPET
+    i = elemIDs(j)
     data_1d(j) = latCell(i)
     data_1d2(j) = lonCell(i)
-    j = j + 1
  enddo
 
  nullify(data_1d,data_1d2)
@@ -534,20 +549,20 @@
  !call unique_sort(nodeIDs,k,unique_nodes)
  call ESMF_MeshGet(input_grid,numOwnedNodes=n)
  allocate(unique_nodes(n))
- allocate(node_pets(k))
+ allocate(node_pets(nNodesPerPET))
  call ESMF_MeshGet(input_grid,nodeOwners=node_pets)
  j = 1
- do i = 1,k
+ do i = 1,nNodesPerPET
    if (node_pets(i)==localpet) then
-     unique_nodes(j) = nodeIDs(k)
+     unique_nodes(j) = nodeIDs(i)
      j = j + 1
    endif
  enddo
- j = 1
- do i = unique_nodes(1), unique_nodes(n)
+ 
+ do j = 1,n
+    i = unique_nodes(j)
     data_1d(j) = latVert(i)
     data_1d2(j) = lonVert(i)
-    j = j + 1
  enddo
  nNodesPerPET = n
  nullify(data_1d,data_1d2)
@@ -565,10 +580,10 @@
   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
     call error_handler("IN FieldGet", error)
 
- j = 1
- do i = cell_start, cell_end
+ 
+ do j = 1,nCellsPerPET
+    i = elemIDs(j)
     data_1d(j) = hgt(i)
-    j = j+1
  enddo
  nullify(data_1d)
  deallocate(lonCell, latCell, lonVert, latVert,vertOnCell)
@@ -732,7 +747,7 @@
  allocate(mapfac_u_one(clb(1):cub(1),clb(2):cub(2))) 
  call get_lat_lon_fields(latitude_u_one, longitude_u_one, clb(1),clb(2),cub(1),cub(2), U)
  call get_map_factor(latitude_u_one, longitude_u_one, mapfac_u_one, mapfac_u_one, clb(1),clb(2),cub(1),cub(2))
- 
+  
  !corner
 call ESMF_GridGetCoord(target_grid, &
                           staggerLoc=ESMF_STAGGERLOC_CORNER, &
@@ -745,7 +760,7 @@ call ESMF_GridGetCoord(target_grid, &
  allocate(latitude_corner_one(clb(1):cub(1),clb(2):cub(2)))
  allocate(longitude_corner_one(clb(1):cub(1),clb(2):cub(2)))
  call get_lat_lon_fields(latitude_corner_one, longitude_corner_one, clb(1),clb(2),cub(1),cub(2),CORNER)
- print*, minval(latitude_corner_one), maxval(latitude_corner_one), minval(longitude_corner_one), maxval(longitude_corner_one)
+ !print*, minval(latitude_corner_one), maxval(latitude_corner_one), minval(longitude_corner_one), maxval(longitude_corner_one)
 !-----------------------------------------------------------------------
 ! Read the mask and lat/lons.
 !-----------------------------------------------------------------------
@@ -859,7 +874,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
                         rc=error)
   if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
     call error_handler("IN FieldGet", error)
-  print*, localpet, cub(1), cub(2)
+  !print*, localpet, cub(1), cub(2)
   do j = clb(2),cub(2)
   do i = clb(1),cub(1)
         lat_src_ptr(i,j) = latitude_v_one(i,j)
@@ -936,6 +951,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
       enddo
  enddo
 
+ nullify(lon_src_ptr,lat_src_ptr)
  if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE1 X-COORD."
  call ESMF_GridGetCoord(target_grid, &
                         staggerLoc=ESMF_STAGGERLOC_EDGE1, &
@@ -954,14 +970,15 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
                         farrayPtr=lat_src_ptr, rc=error)
  if(ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__))&
     call error_handler("IN GridGetCoord", error)
-
+ 
  do j = clb(2),cub(2)
       do i = clb(1), cub(1)
           lon_src_ptr(i,j)=longitude_u_one(i,j)
           lat_src_ptr(i,j)=latitude_u_one(i,j)
       enddo
  enddo
-
+ 
+ nullify(lon_src_ptr,lat_src_ptr)
 if (localpet==0) print*,"- CALL GridGetCoord FOR TARGET GRID EDGE2 X-COORD."
  call ESMF_GridGetCoord(target_grid, &
                         staggerLoc=ESMF_STAGGERLOC_EDGE2, &
@@ -1970,9 +1987,11 @@ subroutine unique_sort(val,nvals, final)
     min_val = minval(val)-1
     max_val = maxval(val)
     do while (min_val<max_val)
-        i = i+1
         min_val = minval(val, mask=val>min_val)
-        unique(i) = min_val
+        if (min_val>0) then
+          i = i+1
+          unique(i) = min_val
+        endif
     enddo
     allocate(final(i), source=unique(1:i))   !<-- Or, just use unique(1:i)
 end subroutine unique_sort
@@ -2163,5 +2182,73 @@ end subroutine unique_sort
       end if
    
    end subroutine get_map_factor
+
+   subroutine read_block_decomp_file(localpet, file,ncells,myCells,myCells_num)
+
+    implicit none
+
+   integer, INTENT(IN)                      :: localpet, ncells
+   character(500), INTENT(IN)              :: file
+   integer, INTENT(OUT), ALLOCATABLE        :: myCells(:)
+   integer, INTENT(OUT)                     :: myCells_num
+   logical                                  :: file_exists
+   integer :: k, istat, nlines, proc
+   integer, ALLOCATABLE                     :: myCells_temp(:)
+   character(200) :: line
+
+   INQUIRE(FILE=file, EXIST=file_exists)
+   
+  if (.not. file_exists) then
+     call error_handler("BLOCK DECOMP FILE DOES NOT EXIST",-1)
+   endif
+
+   open(14, file=trim(file), form='formatted', iostat=istat)
+   if (istat /= 0) then
+     call error_handler("OPENING BLOCK DECOMP FILE", istat)
+   endif
+
+   nlines = 0
+
+   !Loop over lines of file to count the number of cells
+   do
+     read(14, '(A)', iostat=istat) line
+     if (istat/=0) exit
+     if ( trim(line) .eq. '' ) cycle
+     nlines = nlines+1
+   enddo
+   if (nlines /= ncells) call error_handler("BLOCK DECOMPOSITION FILE CONTAINS MORE CELLS THAN INPUT GRID", -1)
+
+   allocate(myCells_temp(ncells))
+  
+   myCells_num = 0
+   rewind(14)
+    do k = 1,nlines
+      read(14, *, iostat=istat) proc
+     if (istat /= 0) call error_handler("READING BLOCK DECOMPOSITION FILE", istat)
+     if (localpet==proc) then
+        myCells_num = myCells_num+1 
+        myCells_temp(myCells_num) = k
+     endif
+    enddo
+    allocate(myCells(myCells_num))
+    myCells(1:myCells_num) = myCells_temp(1:myCells_num)
+   close(14)
+
+   end subroutine read_block_decomp_file
+
+   subroutine para_range(n1, n2, nprocs, irank, ista, iend)
+
+      integer, intent(in) :: n1, n2, nprocs, irank
+      integer, intent(out) :: ista, iend
+
+      integer :: iwork1, iwork2
+
+      iwork1 = (n2 - n1 + 1) / nprocs
+      iwork2 = mod(n2 - n1 + 1, nprocs)
+      ista = irank * iwork1 + n1 + min(irank, iwork2)
+      iend = ista + iwork1 - 1
+      if (iwork2 > irank) iend = iend + 1
+      return
+   end subroutine para_range
 
  end module model_grid
