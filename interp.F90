@@ -502,7 +502,7 @@
          if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldCreate", rc)
     endif
-    if(do_v_interp) then
+    if(do_v_interp==1) then
          if (localpet==0) print*, "- INIT FIELD V"
          v_target_grid = ESMF_FieldCreate(target_grid, &
                             typekind=ESMF_TYPEKIND_R8, &
