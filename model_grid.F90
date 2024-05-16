@@ -96,6 +96,10 @@
                                            !< esmf field to hold v wind on the input grid
  type(esmf_field),  public              :: v_target_grid
                                            !< esmf field to hold v wind on the target grid
+ type(esmf_field),  public              :: u_target_grid_nostag
+                                           !< esmf field to hold v wind on the target grid mass points
+ type(esmf_field),  public              :: v_target_grid_nostag
+                                           !< esmf field to hold v wind on the target grid mass points
  type(esmf_field),  public              :: latitude_target_grid
                                            !< latitude of grid center, target grid
  type(esmf_field),  public              :: longitude_target_grid
@@ -116,15 +120,35 @@
                                           !< soil center depth, target grid
  type(esmf_field), public               :: hgt_input_grid, hgt_target_grid
                                           !< surface elevation, target grid
- type(esmf_field),  public              :: mapfac_m_target_grid
+ type(esmf_field), public               :: mapfac_m_target_grid
                                           !< target grid map factor at grid
                                           ! center 
- type(esmf_field),  public              :: mapfac_u_target_grid
+ type(esmf_field), public               :: mapfac_u_target_grid
                                           !< target grid map factor at u stagger
                                           ! points
- type(esmf_field),  public              :: mapfac_v_target_grid
+ type(esmf_field), public               :: mapfac_v_target_grid
                                           !< target grid map factor at v stagger
                                           ! points
+ type(esmf_field), public               :: sina_target_grid
+                                         !< Sine of grid rotation angle
+                                         !  valid only for grid_type="lambert"
+ type(esmf_field), public                :: cosa_target_grid
+                                         !< Cosine of grid rotation angle
+                                         !  valid only for grid_type="lambert"
+ type(esmf_field), public                :: sina_u_target_grid
+                                         !< Sine of grid rotation angle for u winds
+                                         !  valid only for grid_type="lambert"
+ type(esmf_field), public                :: cosa_u_target_grid
+                                         !< Cosine of grid rotation angle for u wind
+                                         !  valid only for grid_type="lambert" 
+ type(esmf_field), public                :: sina_v_target_grid
+                                         !< Sine of grid rotation angle for v wind
+                                         !  valid only for grid_type="lambert"
+ type(esmf_field), public                :: cosa_v_target_grid
+                                         !< Cosine of grid rotation angle for v wind
+                                         !  valid only for grid_type="lambert"
+
+
  integer, public                       :: n_diag_fields
                                           !< number of fields read from the diag file
  type(esmf_fieldbundle), public        :: input_diag_bundle
@@ -161,7 +185,14 @@
                                           !< whether 3d u is requested for interpolation
  integer, public                       :: do_v_interp           
                                           !< whether 3d v is requested for interpolation
-
+ integer, public                       :: do_u10_interp
+                                          !< whether 10-m u is requested for interpolation
+ integer, public                       :: do_v10_interp
+                                          !< whether 10-m v is requested for interpolation
+ integer, public                       :: u10_ind
+                                          !< index of u10 in target_diag_bundle
+ integer, public                       :: v10_ind
+                                          !< index of v10 in target_diag_bundle
  character(50), allocatable, public    :: target_diag_names(:), &
                                           target_hist_names_2d_cons(:), &
                                           target_hist_names_2d_nstd(:), &
@@ -209,7 +240,6 @@
  public :: define_target_grid
  public :: define_input_grid
  public :: cleanup_input_target_grid_data
-
  contains
  
 
@@ -632,7 +662,8 @@ enddo
                                           
  integer                               :: ncid,id_var, id_dim
  real(esmf_kind_r8), pointer           :: lat_src_ptr(:,:), lon_src_ptr(:,:),& 
-                                                mapptr(:,:)
+                                           mapptr(:,:), cosa_ptr(:,:), sina_ptr(:,:)
+
  type(esmf_polekind_flag)              :: polekindflag(2)
  
  ip1_target = i_target + 1
@@ -1074,6 +1105,84 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
  ! Define some extra projection-related values 
  call xytoll(i_target/2.0,j_target/2.0,ref_lat,ref_lon,M)
 
+ ! ------------------------------------------------------------------------
+ ! Create wind rotation angle arrays for lambert conformal grids
+ ! ------------------------------------------------------------------------
+
+ if (proj_code==PROJ_LC) then
+    cosa_target_grid = ESMF_FieldCreate(target_grid, &
+                                        typekind=ESMF_TYPEKIND_R8, &
+                                        staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                        name="cosalpha", &
+                                        rc=error)
+    sina_target_grid = ESMF_FieldCreate(target_grid, &
+                                        typekind=ESMF_TYPEKIND_R8, &
+                                        staggerloc=ESMF_STAGGERLOC_CENTER, &
+                                        name="sinalpha", &
+                                        rc=error)
+    cosa_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                        typekind=ESMF_TYPEKIND_R8, &
+                                        staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                        name="cosalpha_u", &
+                                        rc=error)
+    sina_u_target_grid = ESMF_FieldCreate(target_grid, &
+                                        typekind=ESMF_TYPEKIND_R8, &
+                                        staggerloc=ESMF_STAGGERLOC_EDGE1, &
+                                        name="sinalpha_u", &
+                                        rc=error)
+    cosa_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                        typekind=ESMF_TYPEKIND_R8, &
+                                        staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                        name="cosalpha_v", &
+                                        rc=error)
+    sina_v_target_grid = ESMF_FieldCreate(target_grid, &
+                                        typekind=ESMF_TYPEKIND_R8, &
+                                        staggerloc=ESMF_STAGGERLOC_EDGE2, &
+                                        name="sinalpha_v", &
+                                        rc=error)
+    ! Set angle on grid center
+    call ESMF_FieldGet(sina_target_grid, farrayPtr=sina_ptr, rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+    call ESMF_FieldGet(cosa_target_grid, farrayPtr=cosa_ptr, &
+                        computationalLBound=clb,computationalUBound=cub, &
+                        rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+
+    call get_rotang(latitude_one, longitude_one, cosa_ptr, sina_ptr, &
+                         clb(1), clb(2), cub(1), cub(2)) 
+    nullify(sina_ptr,cosa_ptr)
+
+    ! Set angle on grid edge1
+    call ESMF_FieldGet(sina_u_target_grid, farrayPtr=sina_ptr, rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+    call ESMF_FieldGet(cosa_u_target_grid, farrayPtr=cosa_ptr, &
+                        computationalLBound=clb,computationalUBound=cub, &
+                        rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+
+    call get_rotang(latitude_u_one, longitude_u_one, cosa_ptr, sina_ptr, &
+                         clb(1), clb(2), cub(1), cub(2))
+    nullify(cosa_ptr,sina_ptr)
+
+    ! Set angle on grid edge2
+    call ESMF_FieldGet(sina_v_target_grid, farrayPtr=sina_ptr, rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+    call ESMF_FieldGet(cosa_v_target_grid, farrayPtr=cosa_ptr, &
+                        computationalLBound=clb,computationalUBound=cub, &
+                        rc=error)
+     if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+
+    call get_rotang(latitude_v_one, longitude_v_one, cosa_ptr, sina_ptr, &
+                         clb(1), clb(2), cub(1), cub(2))
+    nullify(cosa_ptr,sina_ptr)
+ endif
+
  nullify(lon_src_ptr)
  nullify(lat_src_ptr)
  deallocate(longitude_one)
@@ -1176,6 +1285,7 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID mapfac_m."
  call netcdf_err(error, 'GETTING MAP_PROJ GLOBAL ATTRIBUTE')
 
  error = nf90_get_att(ncid, NF90_GLOBAL, 'MAP_PROJ_CHAR', map_proj_char)
+ call netcdf_err(error, 'GETTING MAP_PROJ GLOBAL ATTRIBUTE')
  if (error .ne. 0) then
    if (proj_code == 1) then
      map_proj_char = "Lambert Conformal"
@@ -1660,6 +1770,76 @@ if (localpet==0) print*,"- CALL FieldCreate FOR TARGET GRID LATITUDE."
  enddo
  nullify(mapptr)
  deallocate(mapfac_temp)
+
+ if (proj_code==PROJ_LC) then
+   !--- Read in grid angle arrays and set on grid
+    if (localpet==0) print*, "- CALL FieldCreate for TARGET GRID sinalpha."
+    sina_target_grid = ESMF_FieldCreate(target_grid, &
+                               typekind=ESMF_TYPEKIND_R8, &
+                               staggerloc=ESMF_STAGGERLOC_CENTER, &
+                               name="target_grid_sina", &
+                               rc=error)
+
+    if (localpet==0) print*,"- CALL FieldGet FOR TARGET GRID sina. "
+    call ESMF_FieldGet(sina_target_grid, farrayPtr=mapptr, &
+                    computationalLBound=clb,computationalUBound=cub, &
+                    rc=error)
+    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+
+    allocate(dum2d(clb(1):cub(1),clb(2):cub(2)))
+    starts = (/clb(1),clb(2)/)
+    counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
+    if (localpet==0) print*,'- READ SINALPHA ID'
+    error=nf90_inq_varid(ncid, 'SINALPHA', id_var)
+    call netcdf_err(error, 'reading SINALPHA id')
+
+    if (localpet==0) print*,'- READ SINALPHA'
+    error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=dum2d)
+    call netcdf_err(error, 'reading SINALPHA')
+
+    do j=clb(2),cub(2)
+    do i=clb(1),cub(1)
+        mapptr(i,j) = dum2d(i,j)
+    enddo
+    enddo
+    nullify(mapptr)
+    deallocate(dum2d)
+
+    if (localpet==0) print*, "- CALL FieldCreate for TARGET GRID cosalpha."
+    cosa_target_grid = ESMF_FieldCreate(target_grid, &
+                               typekind=ESMF_TYPEKIND_R8, &
+                               staggerloc=ESMF_STAGGERLOC_CENTER, &
+                               name="target_grid_cosa", &
+                               rc=error)
+
+    if (localpet==0) print*,"- CALL FieldGet FOR TARGET GRID sina. "
+    call ESMF_FieldGet(cosa_target_grid, farrayPtr=mapptr, &
+                    computationalLBound=clb,computationalUBound=cub, &
+                    rc=error)
+    if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+      call error_handler("IN FieldGet", error)
+
+    allocate(dum2d(clb(1):cub(1),clb(2):cub(2)))
+    starts = (/clb(1),clb(2)/)
+    counts = (/cub(1)-clb(1)+1,cub(2)-clb(2)+1/)
+    if (localpet==0) print*,'- READ COSALPHA ID'
+    error=nf90_inq_varid(ncid, 'COSALPHA', id_var)
+    call netcdf_err(error, 'reading COSALPHA id')
+
+    if (localpet==0) print*,'- READ COSALPHA'
+    error=nf90_get_var(ncid, id_var, start=starts,count=counts,values=dum2d)
+    call netcdf_err(error, 'reading COSALPHA')
+
+    do j=clb(2),cub(2)
+    do i=clb(1),cub(1)
+        mapptr(i,j) = dum2d(i,j)
+    enddo
+    enddo
+
+    nullify(mapptr)
+    deallocate(dum2d)
+ endif
 
 !------- Height field
 ! CSS changed from ESMF_STAGGERLOC_EDGE2 to ESMF_STAGGERLOC_CENTER
@@ -2250,5 +2430,71 @@ end subroutine unique_sort
       if (iwork2 > irank) iend = iend + 1
       return
    end subroutine para_range
+ !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   ! Name: get_rotang
+   !
+   ! Purpose: To calculate the sine and cosine of rotation angle.
+   !
+   ! NOTES: The formulas used in this routine come from those in the
+   !   vecrot_rotlat() routine of the original WRF SI.
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   subroutine get_rotang(xlat_arr, xlon_arr, cosa, sina, &
+                         start_mem_i, start_mem_j, end_mem_i, end_mem_j)
+
+      implicit none
+
+     ! Arguments
+      integer, intent(in) :: start_mem_i, start_mem_j, end_mem_i, end_mem_j
+      real(esmf_kind_r8), dimension(start_mem_i:end_mem_i, start_mem_j:end_mem_j), intent(in) :: xlat_arr, xlon_arr
+      real, pointer, dimension(:,:), intent(inout) :: cosa, sina
+      ! Local variables
+      integer :: i, j
+      real :: alpha, d_lon
+
+      do i=start_mem_i, end_mem_i
+         do j=start_mem_j+1, end_mem_j-1
+            d_lon = xlon_arr(i,j+1)-xlon_arr(i,j-1)
+            if (d_lon > 180.) then
+               d_lon = d_lon - 360.
+            else if (d_lon < -180.) then
+               d_lon = d_lon + 360.
+            end if
+
+            alpha = atan2(-cos(xlat_arr(i,j)*RAD_PER_DEG) * (d_lon*RAD_PER_DEG), &
+                            ((xlat_arr(i,j+1)-xlat_arr(i,j-1))*RAD_PER_DEG))
+            sina(i,j) = sin(alpha)
+            cosa(i,j) = cos(alpha)
+         end do
+      end do
+
+      do i=start_mem_i, end_mem_i
+         d_lon = xlon_arr(i,start_mem_j+1)-xlon_arr(i,start_mem_j)
+         if (d_lon > 180.) then
+            d_lon = d_lon - 360.
+         else if (d_lon < -180.) then
+            d_lon = d_lon + 360.
+         end if
+
+         alpha = atan2(-cos(xlat_arr(i,start_mem_j)*RAD_PER_DEG) * (d_lon*RAD_PER_DEG), &
+                       ((xlat_arr(i,start_mem_j+1)-xlat_arr(i,start_mem_j))*RAD_PER_DEG))
+         sina(i,start_mem_j) = sin(alpha)
+         cosa(i,start_mem_j) = cos(alpha)
+      end do
+
+      do i=start_mem_i, end_mem_i
+         d_lon = xlon_arr(i,end_mem_j)-xlon_arr(i,end_mem_j-1)
+         if (d_lon > 180.) then
+            d_lon = d_lon - 360.
+         else if (d_lon < -180.) then
+            d_lon = d_lon + 360.
+         end if
+
+         alpha = atan2(-cos(xlat_arr(i,end_mem_j)*RAD_PER_DEG) * (d_lon*RAD_PER_DEG), &
+                       ((xlat_arr(i,end_mem_j)-xlat_arr(i,end_mem_j-1))*RAD_PER_DEG))
+         sina(i,end_mem_j) = sin(alpha)
+         cosa(i,end_mem_j) = cos(alpha)
+      end do
+
+   end subroutine get_rotang
 
  end module model_grid

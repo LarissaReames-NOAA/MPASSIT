@@ -13,13 +13,14 @@
  use esmf
  use netcdf
  use utils_mod
-
+ use misc_definitions_module, only : PROJ_LC
  use program_setup, only          : hist_file_input_grid, &
                                     diag_file_input_grid, &
                                     grid_file_input_grid, &
                                     interp_diag, interp_hist, &
                                     i_target, j_target, &
-                                    interp_as_bundle
+                                    interp_as_bundle, &
+                                    proj_code, stand_lon
 
  use model_grid, only             : input_grid, target_grid, &
                                     nCells_input, nVert_input,  &
@@ -33,6 +34,8 @@
                                     u_target_grid, &
                                     v_input_grid, &
                                     v_target_grid, &
+                                    u_target_grid_nostag, &
+                                    v_target_grid_nostag, &
                                     hgt_input_grid, hgt_target_grid, &
                                     target_diag_bundle, &
                                     target_diag_names, &
@@ -68,7 +71,12 @@
                                     n_hist_fields_3d_vert, &
                                     n_hist_fields_soil, &
                                     do_u_interp, &
-                                    do_v_interp 
+                                    do_v_interp, &
+                                    cosa_target_grid, &
+                                    sina_target_grid, &
+                                    do_u10_interp, &
+                                    do_v10_interp, &
+                                    u10_ind, v10_ind
  implicit none
 
  private
@@ -122,12 +130,14 @@
      if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegridStore", rc)
 
-
      if (localpet==0) print*,"- REGRID DIAG FIELDS "
      call ESMF_FieldBundleRegrid(input_diag_bundle, target_diag_bundle, rh_patch, rc=rc)
      if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
 
+     if (do_u10_interp==1 .and. do_v10_interp==1 .and. proj_code==PROJ_LC) then
+        call rotate_winds_cgrid(localpet,2)
+     endif
   end subroutine interp_diag_data
 
   subroutine init_target_diag_fields(localpet)
@@ -246,7 +256,7 @@
     if (do_u_interp==1) then
        if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
         
-       call ESMF_FieldRegridStore(u_input_grid,u_target_grid, &
+       call ESMF_FieldRegridStore(u_input_grid,u_target_grid_nostag, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
                                         srcTermProcessing=isrctermprocessing, &
@@ -255,15 +265,16 @@
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldRegridStore", rc)
 
-       call ESMF_FieldRegrid(u_input_grid,u_target_grid, rh_patch, rc=rc)
+       call ESMF_FieldRegrid(u_input_grid,u_target_grid_nostag, rh_patch, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldRegrid", rc)
+
     endif
 
     if (do_v_interp==1) then
        if (localpet==0) print*, "- CREATE REGRID uReconstructMeridional ROUTEHANDLE"
 
-       call ESMF_FieldRegridStore(v_input_grid,v_target_grid, &
+       call ESMF_FieldRegridStore(v_input_grid,v_target_grid_nostag, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
                                         srcTermProcessing=isrctermprocessing, &
@@ -272,10 +283,50 @@
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldRegridStore", rc)
 
-       call ESMF_FieldRegrid(v_input_grid,v_target_grid, rh_patch, rc=rc)
+       call ESMF_FieldRegrid(v_input_grid,v_target_grid_nostag, rh_patch, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldRegrid", rc)
     endif
+
+    if (do_u_interp==1 .and. do_v_interp==1 .and. proj_code==PROJ_LC) then
+       call rotate_winds_cgrid(localpet,3)
+    endif
+
+    if (do_u_interp==1) then
+       if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
+
+       call ESMF_FieldRegridStore(u_target_grid_nostag, u_target_grid, &
+                                        regridmethod=method, &
+                                        routehandle=rh_patch, &
+                                        srcTermProcessing=isrctermprocessing, &
+                                        unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                        rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldRegridStore", rc)
+
+       call ESMF_FieldRegrid(u_target_grid_nostag,u_target_grid, rh_patch, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldRegrid", rc)
+
+    endif
+
+    if (do_v_interp==1) then
+       if (localpet==0) print*, "- CREATE REGRID uReconstructMeridional ROUTEHANDLE"
+
+       call ESMF_FieldRegridStore(v_target_grid_nostag, v_target_grid, &
+                                        regridmethod=method, &
+                                        routehandle=rh_patch, &
+                                        srcTermProcessing=isrctermprocessing, &
+                                        unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+                                        rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+          call error_handler("IN FieldRegridStore", rc)
+
+       call ESMF_FieldRegrid(v_target_grid_nostag,v_target_grid, rh_patch, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldRegrid", rc)
+    endif
+
 
     if (n_hist_fields_3d_nzp1>0) then
         if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
@@ -441,6 +492,15 @@
                              ungriddedUBound=(/nz_input/),rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldCreate", rc)
+
+         u_target_grid_nostag = ESMF_FieldCreate(target_grid, &
+                             typekind=ESMF_TYPEKIND_R8, &
+                             staggerloc=ESMF_STAGGERLOC_CENTER, &
+                             name="UMASS", &
+                             ungriddedLBound=(/1/), &
+                             ungriddedUBound=(/nz_input/),rc=rc)
+         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldCreate", rc)
     endif
     if(do_v_interp) then
          if (localpet==0) print*, "- INIT FIELD V"
@@ -448,6 +508,15 @@
                             typekind=ESMF_TYPEKIND_R8, &
                             staggerloc=ESMF_STAGGERLOC_EDGE2, &
                             name="V", &
+                             ungriddedLBound=(/1/), &
+                             ungriddedUBound=(/nz_input/), rc=rc)
+         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+         call error_handler("IN FieldCreate", rc)
+
+         v_target_grid_nostag = ESMF_FieldCreate(target_grid, &
+                            typekind=ESMF_TYPEKIND_R8, &
+                            staggerloc=ESMF_STAGGERLOC_CENTER, &
+                            name="VMASS", &
                              ungriddedLBound=(/1/), &
                              ungriddedUBound=(/nz_input/), rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
@@ -616,6 +685,68 @@
     deallocate(target_hist_names_3d_nzp1, target_hist_names_3d_vert)
 
  end subroutine init_target_hist_fields
+
+ subroutine rotate_winds_cgrid(localpet,wind_dim)
+      use constants_module
+      implicit none
+      integer, intent(in) :: localpet, wind_dim
+      real(esmf_kind_r8), pointer, dimension(:,:,:) :: u_ptr3, v_ptr3
+      real(esmf_kind_r8), pointer, dimension(:,:) :: u_ptr2, v_ptr2
+      real(esmf_kind_r8), pointer, dimension(:,:)   :: cosa, sina  
+      type(esmf_field), allocatable    :: fields(:) 
+      integer, dimension(2)            ::  clb, cub        
+      double precision :: tana
+      integer :: i,j,rc
+
+      if (wind_dim==3) then
+         call ESMF_FieldGet(u_target_grid_nostag,farrayPtr = u_ptr3,rc=rc)
+           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+               call error_handler("IN FieldGet", rc)
+         call ESMF_FieldGet(v_target_grid_nostag,farrayPtr = v_ptr3,rc=rc)
+           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+               call error_handler("IN FieldGet", rc)
+      elseif(wind_dim==2) then
+         allocate (fields(n_diag_fields))
+         call ESMF_FieldBundleGet(target_diag_bundle, fieldList=fields, &
+                                  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                                  rc=rc)
+         if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
+             call error_handler("IN FieldBundleGet", rc)
+         call ESMF_FieldGet(fields(u10_ind),farrayPtr = u_ptr2,rc=rc)
+           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+               call error_handler("IN FieldGet", rc)
+         call ESMF_FieldGet(fields(v10_ind),farrayPtr = v_ptr2,rc=rc)
+           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+               call error_handler("IN FieldGet", rc)
+         deallocate(fields)
+      else
+         call error_handler("In rotate_winds_cgrid: input wind_dim must equal 2 (for 10-m winds) or 3 (for 3-d winds)", -1)
+      endif
+
+      call ESMF_FieldGet(cosa_target_grid,farrayPtr = cosa, &
+                         computationalLBound=clb,&
+                         computationalUBound=cub, rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+      call ESMF_FieldGet(sina_target_grid,farrayPtr = sina, &
+                         rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)   
+
+      print*, localpet, clb(2), cub(2)
+      do j = clb(2),cub(2)
+      do i = clb(1),cub(1)
+         tana = sina(i,j)/cosa(i,j)
+         if (wind_dim==3) then
+            u_ptr3(i,j,:) = (u_ptr3(i,j,:) + v_ptr3(i,j,:) * tana) / (cosa(i,j) + sina(i,j) * tana)
+            v_ptr3(i,j,:) = (v_ptr3(i,j,:) - u_ptr3(i,j,:) * sina(i,j)) / cosa(i,j)
+         elseif(wind_dim==2) then
+            u_ptr2(i,j) = (u_ptr2(i,j) + v_ptr2(i,j) * tana) / (cosa(i,j) + sina(i,j) * tana)
+            v_ptr2(i,j) = (v_ptr2(i,j) - u_ptr2(i,j) * sina(i,j)) / cosa(i,j)
+         endif
+      enddo
+      enddo
+   end subroutine rotate_winds_cgrid
 
 end module interp
 
