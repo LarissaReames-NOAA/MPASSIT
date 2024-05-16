@@ -4,6 +4,7 @@ module write_data
     use utils_mod
     use program_setup, only: output_file
     use datetime_module, only: datetime, timedelta, clock
+    use misc_definitions_module, only: PROJ_LC
     private
 
     public :: write_to_file
@@ -47,6 +48,8 @@ contains
                               mapfac_m_target_grid, &
                               mapfac_u_target_grid, &
                               mapfac_v_target_grid, &
+                              sina_target_grid, &
+                              cosa_target_grid, &
                               zs_target_grid, &
                               hgt_target_grid, &
                               u_target_grid, &
@@ -101,7 +104,7 @@ contains
         integer                          :: dim_lonp, dim_latp, dim_str, dim_lon_stag, dim_lat_stag
         integer                          :: id_lat, id_lon, id_z, id_zs, id_times, id_xtime, id_itime
         integer                          :: id_latu, id_latv, id_lonu, id_lonv, id_ph, id_mu, id_hgt, id_ptop
-        integer                          :: id_mfm, id_mfu, id_mfv
+        integer                          :: id_mfm, id_mfu, id_mfv, id_sina, id_cosa
         integer                          :: id_u, id_v
         integer                          :: n2d, n3d, ndims
         integer                          :: sy, sm, sd, sh, smi, ss, vy, vm, vd, vh, vmi, vs
@@ -440,6 +443,38 @@ contains
             call netcdf_err(error, 'DEFINING STAGGER')
             error = nf90_put_att(ncid, id_mfv, "FieldType", 104)
             call netcdf_err(error, 'DEFINING FieldType')
+
+            if (PROJ_CODE==PROJ_LC) then
+               error = nf90_def_var(ncid, 'SINALPHA', NF90_FLOAT, (/dim_lon, dim_lat, dim_time/), id_sina)
+               call netcdf_err(error, 'DEFINING SINALPHA FIELD')
+               error = nf90_put_att(ncid, id_sina, "description", "SINE OF GRID ROTATION ANGLE ALPHA")
+               call netcdf_err(error, 'DEFINING SINALPHA NAME')
+               error = nf90_put_att(ncid, id_sina, "units", " ")
+               call netcdf_err(error, 'DEFINING MAPFAC_M UNITS')
+               error = nf90_put_att(ncid, id_sina, "MemoryOrder", "XY ")
+               call netcdf_err(error, 'DEFINING MEMORYORDER')
+               error = nf90_put_att(ncid, id_sina, "coordinates", "XLONG XLAT")
+               call netcdf_err(error, 'DEFINING COORD')
+               error = nf90_put_att(ncid, id_sina, "stagger", " ")
+               call netcdf_err(error, 'DEFINING STAGGER')
+               error = nf90_put_att(ncid, id_sina, "FieldType", 104)
+               call netcdf_err(error, 'DEFINING FieldType')
+
+               error = nf90_def_var(ncid, 'COSALPHA', NF90_FLOAT, (/dim_lon, dim_lat, dim_time/), id_cosa)
+               call netcdf_err(error, 'DEFINING COAALPHA FIELD')
+               error = nf90_put_att(ncid, id_sina, "description", "COSINE OF GRID ROTATION ANGLE ALPHA")
+               call netcdf_err(error, 'DEFINING COSALPHA NAME')
+               error = nf90_put_att(ncid, id_sina, "units", " ")
+               call netcdf_err(error, 'DEFINING MAPFAC_M UNITS')
+               error = nf90_put_att(ncid, id_sina, "MemoryOrder", "XY ")
+               call netcdf_err(error, 'DEFINING MEMORYORDER')
+               error = nf90_put_att(ncid, id_sina, "coordinates", "XLONG XLAT")
+               call netcdf_err(error, 'DEFINING COORD')
+               error = nf90_put_att(ncid, id_sina, "stagger", " ")
+               call netcdf_err(error, 'DEFINING STAGGER')
+               error = nf90_put_att(ncid, id_sina, "FieldType", 104)
+               call netcdf_err(error, 'DEFINING FieldType')     
+            endif
 
             error = nf90_def_var(ncid, 'Z_C', NF90_FLOAT, (/dim_lon, dim_lat, dim_zp1, dim_time/), id_z)
             call netcdf_err(error, 'DEFINING Z_C FIELD')
@@ -993,22 +1028,24 @@ contains
 
 !  longitude on u grid
         if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LONGITUDE U"
-        call ESMF_FieldGather(longitude_u_target_grid, dum2dtu(:, :, 1), rootPet=0, rc=error)
+        call ESMF_FieldGather(longitude_u_target_grid, dum2du, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
             call error_handler("IN FieldGather", error)
         if (localpet == 0) then
-            error = nf90_put_var(ncid, id_lonu, dum2dtu, count=shape(dum2dtu))
+            dum2dtu(:,:,1) = dum2du
+            error = nf90_put_var(ncid, id_lonu, dum2dtu, count=(/i_target+1, j_target, 1/))
             call netcdf_err(error, 'WRITING XLONG_U RECORD')
         end if
 
 !  latitude on u grid
 
         if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LATITUDE U"
-        call ESMF_FieldGather(latitude_u_target_grid, dum2dtu(:, :, 1), rootPet=0, rc=error)
+        call ESMF_FieldGather(latitude_u_target_grid, dum2du, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
             call error_handler("IN FieldGather", error)
         if (localpet == 0) then
-            error = nf90_put_var(ncid, id_latu, dum2dtu, count=shape(dum2dtu))
+            dum2dtu(:,:,1) = dum2du
+            error = nf90_put_var(ncid, id_latu, dum2dtu, count=(/i_target+1, j_target, 1/))
             call netcdf_err(error, 'WRITING XLAT_U RECORD')
         end if
 
@@ -1018,18 +1055,19 @@ contains
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
             call error_handler("IN FieldGather", error)
         if (localpet == 0) then
-            maxinds = shape(dum2dv)
-            error = nf90_put_var(ncid, id_latv, dum2dv, count=(/maxinds(1), maxinds(2), 1/))
+            dum2dtv(:,:,1) = dum2dv
+            error = nf90_put_var(ncid, id_latv, dum2dtv, count=(/i_target, j_target+1, 1/))
             call netcdf_err(error, 'WRITING XLAT_V RECORD')
         end if
 
 !  longitude on v grid
         if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LONGITUDE V"
-        call ESMF_FieldGather(longitude_v_target_grid, dum2dv(:, :), rootPet=0, rc=error)
+        call ESMF_FieldGather(longitude_v_target_grid, dum2dv, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
             call error_handler("IN FieldGather", error)
         if (localpet == 0) then
-            error = nf90_put_var(ncid, id_lonv, dum2dv, count=(/maxinds(1), maxinds(2), 1/))
+            dum2dtv(:,:,1) = dum2dv
+            error = nf90_put_var(ncid, id_lonv, dum2dtv, count=(/i_target, j_target+1, 1/))
             call netcdf_err(error, 'WRITING XLONG_V RECORD')
         end if
 
@@ -1046,6 +1084,8 @@ contains
             call netcdf_err(error, 'WRITING MAPFAC_M RECORD')
         end if
 
+! mapfac on u grid
+
         if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID mapfac_u"
         call ESMF_FieldGather(mapfac_u_target_grid, dum2du, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
@@ -1056,6 +1096,8 @@ contains
             error = nf90_put_var(ncid, id_mfu, dum2dtu, count=shape(dum2dtu))
             call netcdf_err(error, 'WRITING MAPFAC_U RECORD')
         end if
+
+!mapfac on v grid
 
         if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID mapfac_v"
         call ESMF_FieldGather(mapfac_v_target_grid, dum2dv, rootPet=0, rc=error)
@@ -1068,6 +1110,31 @@ contains
             call netcdf_err(error, 'WRITING MAPFAC_V RECORD')
         end if
 
+        if (PROJ_CODE==PROJ_LC) then
+!sinalpha
+        if (localpet == 0) print*, "- CALL FieldGather FOR TARGET GRID sinalpha"
+        call ESMF_FieldGather(sina_target_grid, dum2d, rootPet=0, rc=error)
+        if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
+            call error_handler("IN FieldGather", error)
+
+        if (localpet == 0) then
+            dum2dt(:, :, 1) = dum2d
+            error = nf90_put_var(ncid, id_sina, dum2dt, count=shape(dum2dt))
+            call netcdf_err(error, 'WRITING SINALPHA RECORD')
+        end if
+
+!cosalpha
+        if (localpet == 0) print*, "- CALL FieldGather FOR TARGET GRID cosalpha"
+        call ESMF_FieldGather(cosa_target_grid, dum2d, rootPet=0, rc=error)
+        if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
+            call error_handler("IN FieldGather", error)
+
+        if (localpet == 0) then
+            dum2dt(:, :, 1) = dum2d
+            error = nf90_put_var(ncid, id_cosa, dum2dt, count=shape(dum2dt))
+            call netcdf_err(error, 'WRITING COSALPHA RECORD')
+        end if
+        endif
 !  z_s
 
         if (localpet == 0) print *, "- WRITE TO FILE TARGET GRID Z_S"

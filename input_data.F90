@@ -79,7 +79,10 @@
                                     u_input_grid, &
                                     v_input_grid, &
                                     do_u_interp, &
-                                    do_v_interp
+                                    do_v_interp, &
+                                    do_u10_interp, &
+                                    do_v10_interp, &
+                                    u10_ind, v10_ind
  implicit none
 
  private
@@ -163,10 +166,18 @@
  allocate(dummy2(nz_input, nCells_input,1))
 
  do i = 1,n_diag_fields
-
+    
     call ESMF_FieldGet(fields(i), name=vname, rc=rc)
     if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-    call error_handler("IN FieldGet", rc)
+     call error_handler("IN FieldGet", rc)
+    if(vname=='u10') then
+        do_u10_interp = 1
+        u10_ind = i
+    endif
+    if(vname=='v10') then 
+        do_v10_interp = 1
+        v10_ind = i
+    endif
 
     if (localpet==0) print*,"- READ ", trim(vname)
     error=nf90_inq_varid(ncid, trim(vname), id_var)
