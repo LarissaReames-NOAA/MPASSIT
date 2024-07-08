@@ -41,7 +41,7 @@ if [[ "$compiler" == "intel" ]]; then
 elif [[ "$compiler" == "gnu" ]]; then
     CMAKE_FLAGS="${CMAKE_FLAGS} -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_Fortran_COMPILER=gfortran"
 fi
-
+export debug=true
 if [[ "${debug}" == "true" ]]; then
     CMAKE_FLAGS="${CMAKE_FLAGS} -DCMAKE_BUILD_TYPE=Debug"
 else
