@@ -434,7 +434,7 @@
      enddo
 !$OMP END PARALLEL DO
  else
-     call read_block_decomp_file(localpet,block_decomp_file,nCells,elemIDs,nCellsPerPET)
+     call read_block_decomp_file(localpet,npets,block_decomp_file,nCells,elemIDs,nCellsPerPET)
  endif
 
  allocate(elementConn_temp(maxEdges*nCellsPerPET))
@@ -2363,18 +2363,19 @@ end subroutine unique_sort
    
    end subroutine get_map_factor
 
-   subroutine read_block_decomp_file(localpet, file,ncells,myCells,myCells_num)
+   subroutine read_block_decomp_file(localpet, npets,file,ncells,myCells,myCells_num)
 
     implicit none
 
-   integer, INTENT(IN)                      :: localpet, ncells
+   integer, INTENT(IN)                      :: localpet, ncells, npets
    character(500), INTENT(IN)              :: file
    integer, INTENT(OUT), ALLOCATABLE        :: myCells(:)
    integer, INTENT(OUT)                     :: myCells_num
    logical                                  :: file_exists
-   integer :: k, istat, nlines, proc
+   integer :: k, istat, nlines, proc, proc_max
    integer, ALLOCATABLE                     :: myCells_temp(:)
-   character(200) :: line
+   character(200) :: line,msg
+   character(100) :: str1,str2
 
    INQUIRE(FILE=file, EXIST=file_exists)
    
@@ -2401,15 +2402,22 @@ end subroutine unique_sort
    allocate(myCells_temp(ncells))
   
    myCells_num = 0
+   proc_max=0
    rewind(14)
     do k = 1,nlines
       read(14, *, iostat=istat) proc
      if (istat /= 0) call error_handler("READING BLOCK DECOMPOSITION FILE", istat)
+     proc_max = max(proc,proc_max)
      if (localpet==proc) then
         myCells_num = myCells_num+1 
         myCells_temp(myCells_num) = k
      endif
     enddo
+    
+    write(str1,'(A,I10,A)') "BLOCK DECOMPOSITION FILE GENERATED FOR ",proc_max+1," PROCESSES BUT "
+    write(str2,'(I10,A)') npets," PROCESSORS USED."
+    write(msg,'(A)') trim(str1)//new_line('A')//trim(str2)
+    if(proc_max+1 /= npets) call error_handler(trim(msg),-1)
     allocate(myCells(myCells_num))
     myCells(1:myCells_num) = myCells_temp(1:myCells_num)
    close(14)

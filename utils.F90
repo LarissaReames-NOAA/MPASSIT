@@ -25,7 +25,8 @@ contains
 
         integer :: ierr
 
-        print *, "- FATAL ERROR: ", string
+        print *, "- FATAL ERROR: "
+        write(*,'(A)')  trim(string)
         print *, "- IOSTAT IS: ", rc
         call mpi_abort(mpi_comm_world, 999, ierr)
 
