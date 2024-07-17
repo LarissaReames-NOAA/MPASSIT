@@ -74,15 +74,15 @@
  type(esmf_grid),  public               :: target_grid
                                            !< target grid esmf grid object.
 
- type(esmf_field),  public              :: cell_latitude_input_grid
-                                           !< latitude of grid center, input grid
- type(esmf_field),  public              :: cell_longitude_input_grid
-                                           !< longitude of grid center, input grid
+! type(esmf_field),  public              :: cell_latitude_mpas_grid
+!                                           !< latitude of grid center, input grid
+! type(esmf_field),  public              :: cell_longitude_mpas_grid
+!                                           !< longitude of grid center, input grid
 
- type(esmf_field),  public              :: node_latitude_input_grid
-                                           !< latitude of grid center, input grid
- type(esmf_field),  public              :: node_longitude_input_grid
-                                           !< longitude of grid center, input grid
+! type(esmf_field),  public              :: node_latitude_mpas_grid
+!                                           !< latitude of grid center, input grid
+! type(esmf_field),  public              :: node_longitude_mpas_grid
+!                                           !< longitude of grid center, input grid
 
  type(esmf_field),  public              :: zgrid_input_grid
                                            !< esmf field to hold level height on input grid
@@ -118,7 +118,7 @@
                                            !grid
  real(esmf_kind_r8), allocatable , public :: zs_target_grid(:,:)
                                           !< soil center depth, target grid
- type(esmf_field), public               :: hgt_input_grid, hgt_target_grid
+ type(esmf_field), public               :: hgt_mpas_grid, hgt_target_grid
                                           !< surface elevation, target grid
  type(esmf_field), public               :: mapfac_m_target_grid
                                           !< target grid map factor at grid
@@ -242,42 +242,60 @@
  public :: cleanup_input_target_grid_data
  contains
  
+!!> Define input grid 
+!!
+!! @param [in] localpet ESMF local persistent execution thread
+!! @param [in] npets  Number of persistent execution threads
+!! @param [in] grid_type String input grid type
+ subroutine define_input_grid(localpet,npets,grid_type)
+ integer, intent(in)            :: localpet, npets
+ character(len=20), intent(in)  :: grid_type
+ 
+ grid_select: select case (trim(grid_type))
+ 	case("mpas")
+ 		call define_mpas_grid(localpet,npets,input_grid)
+ 	case default
+ 	
+ end select grid_select
+ 
+ end subroutine define_input_grid
 
-!> Define input grid object for MPAS input data.
+!> Define grid object for MPAS input data.
 !!
 !! @param [in] localpet ESMF local persistent execution thread
 !! @param [in] npets  Number of persistent execution threads
 !! @author  Larissa Reames CIWRO/NOAA/NSSL/FRDD
 
- subroutine define_input_grid(localpet,npets)
+ subroutine define_mpas_grid(localpet,npets,mpas_grid)
 
  use mpi
  use netcdf
- use program_setup, only       : grid_file_input_grid
+ use program_setup, only        : grid_file_input_grid
  implicit none
 
- character(len=500)           :: the_file, dimname
+ character(len=500)             :: the_file, dimname
+  
+ integer, intent(in)            :: localpet, npets
+ type(esmf_mesh), intent(inout) :: mpas_grid
+ 
+ integer                        :: error, i, j, k, rc, n, lmi(1), lma(1)
+ integer                        :: NX, NY, format
 
- integer, intent(in)          :: localpet, npets
-
- integer                      :: error, i, j, k, rc, n, lmi(1), lma(1)
- integer                      :: NX, NY, format
-
- integer                               :: ncid,id_var, id_dim, dimsize, nVertThis
- integer                               :: nCells, nVertices, maxEdges, dimids(2)
- integer                               :: cell_start, cell_end, dims(3), temp1, &
-                                          temp2, temp3, temp(1), clb(1), cub(1)
- integer, allocatable                  :: elemTypes2(:), vertOnCell(:,:), &
-                                          nodesPET(:), nodeIDs_temp(:), &
-                                          elementConn_temp(:), elementConn(:), &
-                                          unique_nodes(:),node_pets(:),myCells(:)
- real(esmf_kind_r8), allocatable       :: latCell(:), lonCell(:), &
-                                          latVert(:), lonVert(:), &
-                                          nodeCoords(:), &
-                                          nodeCoords_temp(:), &
-                                          elemCoords(:), hgt(:)
- real(esmf_kind_r8), pointer           :: data_1d(:), data_1d2(:)
- real(esmf_kind_r8), parameter         :: PI=4.D0*DATAN(1.D0)
+ integer                        :: ncid,id_var, id_dim, dimsize, nVertThis
+ integer                        :: nCells, nVertices, maxEdges, dimids(2)
+ integer                        :: cell_start, cell_end, dims(3), temp1, &
+                                    temp2, temp3, temp(1), clb(1), cub(1)
+ integer, allocatable           :: elemTypes2(:), vertOnCell(:,:), &
+                                    nodesPET(:), nodeIDs_temp(:), &
+                                    elementConn_temp(:), elementConn(:), &
+                                    unique_nodes(:),node_pets(:),myCells(:)
+ real(esmf_kind_r8),allocatable :: latCell(:), lonCell(:), &
+                                    latVert(:), lonVert(:), &
+                                    nodeCoords(:), &
+                                    nodeCoords_temp(:), &
+                                    elemCoords(:), hgt(:)
+ real(esmf_kind_r8), pointer    :: data_1d(:), data_1d2(:)
+ real(esmf_kind_r8), parameter  :: PI=4.D0*DATAN(1.D0)
  integer :: myCells_num
 
  the_file = grid_file_input_grid
@@ -484,7 +502,7 @@ do i = 1,nCellsPerPET
 enddo
 !$OMP END PARALLEL DO
   if (localpet==0) print*, "- CREATE MESH -"
- input_grid = ESMF_MeshCreate(parametricDim=2, &
+ mpas_grid = ESMF_MeshCreate(parametricDim=2, &
                      spatialDim=2, &
                      nodeIDs= nodeIDs, &
                      nodeCoords = nodeCoords, &
@@ -508,105 +526,105 @@ enddo
  !-----------------------------------------------------------------------
  ! Create lat/lon arrays on input element grid
  !-----------------------------------------------------------------------
+!
+! if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID CELL LATITUDE."
+! cell_latitude_mpas_grid = ESMF_FieldCreate(mpas_grid, &
+!                                   typekind=ESMF_TYPEKIND_R8, &
+!                                   meshloc=ESMF_MESHLOC_ELEMENT, &
+!                                   name="mpas_grid_cell_latitude", &
+!                                   rc=error)
+! if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+!    call error_handler("IN FieldCreate", error)
+!
+! if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID CELL LONGITUDE."
+! cell_longitude_mpas_grid = ESMF_FieldCreate(mpas_grid, &
+!                                   typekind=ESMF_TYPEKIND_R8, &
+!                                   meshloc=ESMF_MESHLOC_ELEMENT, &
+!                                   name="mpas_grid_cell_longitude", &
+!                                   rc=error)
+! if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+!    call error_handler("IN FieldCreate", error)
+! 
+!  call ESMF_FieldGet(cell_latitude_mpas_grid, farrayPtr=data_1d,rc = rc)
+!   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+!     call error_handler("IN FieldGet", error)
+! 
+!  call ESMF_FieldGet(cell_longitude_mpas_grid,farrayPtr=data_1d2, &
+!                     computationalLBound=clb, computationalUBound=cub, rc=rc)
+!   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+!     call error_handler("IN FieldGet", error)
+! 
+!  
+!  do j = 1, nCellsPerPET
+!     i = elemIDs(j)
+!     data_1d(j) = latCell(i)
+!     data_1d2(j) = lonCell(i)
+!  enddo
+! 
+!  nullify(data_1d,data_1d2)
+! 
+!  !-----------------------------------------------------------------------
+!  ! Create lat/lon arrays on input node grid
+!  !-----------------------------------------------------------------------
+! 
+!  if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID VERTEX LATITUDE."
+!  node_latitude_mpas_grid = ESMF_FieldCreate(mpas_grid, &
+!                                    typekind=ESMF_TYPEKIND_R8, &
+!                                    meshloc=ESMF_MESHLOC_NODE, &
+!                                    name="mpas_grid_node_latitude", &
+!                                    rc=error)
+!  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!     call error_handler("IN FieldCreate", error)
+! 
+!  if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID VERTEX LONGITUDE."
+!  node_longitude_mpas_grid = ESMF_FieldCreate(mpas_grid, &
+!                                    typekind=ESMF_TYPEKIND_R8, &
+!                                    meshloc=ESMF_MESHLOC_NODE, &
+!                                    name="mpas_grid_node_longitude", &
+!                                    rc=error)
+!  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!     call error_handler("IN FieldCreate", error)
+! 
+!  call ESMF_FieldGet(node_latitude_mpas_grid, farrayPtr=data_1d,rc = rc)
+!   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!     call error_handler("IN FieldGet", error)
+! 
+!  call ESMF_FieldGet(mpas_longitude_input_grid,farrayPtr=data_1d2, &
+!                     computationalLBound=clb, computationalUBound=cub, rc=rc)
+!   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!     call error_handler("IN FieldGet", error)
+! 
+!  !call unique_sort(nodeIDs,k,unique_nodes)
+!  call ESMF_MeshGet(mpas_grid,numOwnedNodes=n)
+!  allocate(unique_nodes(n))
+!  allocate(node_pets(nNodesPerPET))
+!  call ESMF_MeshGet(mpas_grid,nodeOwners=node_pets)
+!  j = 1
+!  do i = 1,nNodesPerPET
+!    if (node_pets(i)==localpet) then
+!      unique_nodes(j) = nodeIDs(i)
+!      j = j + 1
+!    endif
+!  enddo
+!  
+!  do j = 1,n
+!     i = unique_nodes(j)
+!     data_1d(j) = latVert(i)
+!     data_1d2(j) = lonVert(i)
+!  enddo
+!  nNodesPerPET = n
+!  nullify(data_1d,data_1d2)
 
- if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID CELL LATITUDE."
- cell_latitude_input_grid = ESMF_FieldCreate(input_grid, &
+ if (localpet==0) print*,"- CALL FieldCreate FOR MPAS GRID HGT."
+ hgt_mpas_grid = ESMF_FieldCreate(mpas_grid, &
                                    typekind=ESMF_TYPEKIND_R8, &
                                    meshloc=ESMF_MESHLOC_ELEMENT, &
-                                   name="input_grid_cell_latitude", &
-                                   rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-    call error_handler("IN FieldCreate", error)
-
- if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID CELL LONGITUDE."
- cell_longitude_input_grid = ESMF_FieldCreate(input_grid, &
-                                   typekind=ESMF_TYPEKIND_R8, &
-                                   meshloc=ESMF_MESHLOC_ELEMENT, &
-                                   name="input_grid_cell_longitude", &
-                                   rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-    call error_handler("IN FieldCreate", error)
-
- call ESMF_FieldGet(cell_latitude_input_grid, farrayPtr=data_1d,rc = rc)
-  if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-    call error_handler("IN FieldGet", error)
-
- call ESMF_FieldGet(cell_longitude_input_grid,farrayPtr=data_1d2, &
-                    computationalLBound=clb, computationalUBound=cub, rc=rc)
-  if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
-    call error_handler("IN FieldGet", error)
-
- 
- do j = 1, nCellsPerPET
-    i = elemIDs(j)
-    data_1d(j) = latCell(i)
-    data_1d2(j) = lonCell(i)
- enddo
-
- nullify(data_1d,data_1d2)
-
- !-----------------------------------------------------------------------
- ! Create lat/lon arrays on input node grid
- !-----------------------------------------------------------------------
-
- if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID VERTEX LATITUDE."
- node_latitude_input_grid = ESMF_FieldCreate(input_grid, &
-                                   typekind=ESMF_TYPEKIND_R8, &
-                                   meshloc=ESMF_MESHLOC_NODE, &
-                                   name="input_grid_node_latitude", &
+                                   name="mpas_grid_hgt", &
                                    rc=error)
  if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
     call error_handler("IN FieldCreate", error)
 
- if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID VERTEX LONGITUDE."
- node_longitude_input_grid = ESMF_FieldCreate(input_grid, &
-                                   typekind=ESMF_TYPEKIND_R8, &
-                                   meshloc=ESMF_MESHLOC_NODE, &
-                                   name="input_grid_node_longitude", &
-                                   rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-    call error_handler("IN FieldCreate", error)
-
- call ESMF_FieldGet(node_latitude_input_grid, farrayPtr=data_1d,rc = rc)
-  if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-    call error_handler("IN FieldGet", error)
-
- call ESMF_FieldGet(node_longitude_input_grid,farrayPtr=data_1d2, &
-                    computationalLBound=clb, computationalUBound=cub, rc=rc)
-  if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-    call error_handler("IN FieldGet", error)
-
- !call unique_sort(nodeIDs,k,unique_nodes)
- call ESMF_MeshGet(input_grid,numOwnedNodes=n)
- allocate(unique_nodes(n))
- allocate(node_pets(nNodesPerPET))
- call ESMF_MeshGet(input_grid,nodeOwners=node_pets)
- j = 1
- do i = 1,nNodesPerPET
-   if (node_pets(i)==localpet) then
-     unique_nodes(j) = nodeIDs(i)
-     j = j + 1
-   endif
- enddo
- 
- do j = 1,n
-    i = unique_nodes(j)
-    data_1d(j) = latVert(i)
-    data_1d2(j) = lonVert(i)
- enddo
- nNodesPerPET = n
- nullify(data_1d,data_1d2)
-
- if (localpet==0) print*,"- CALL FieldCreate FOR INPUT GRID HGT."
- hgt_input_grid = ESMF_FieldCreate(input_grid, &
-                                   typekind=ESMF_TYPEKIND_R8, &
-                                   meshloc=ESMF_MESHLOC_ELEMENT, &
-                                   name="input_grid_hgt", &
-                                   rc=error)
- if(ESMF_logFoundError(rcToCheck=error,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-    call error_handler("IN FieldCreate", error)
-
- call ESMF_FieldGet(hgt_input_grid, farrayPtr=data_1d,rc = rc)
+ call ESMF_FieldGet(hgt_mpas_grid, farrayPtr=data_1d,rc = rc)
   if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
     call error_handler("IN FieldGet", error)
 
@@ -619,7 +637,7 @@ enddo
  deallocate(lonCell, latCell, lonVert, latVert,vertOnCell)
 
 
- end subroutine define_input_grid
+ end subroutine define_mpas_grid
 
 !> Setup the esmf grid object for the target grid.
 !!

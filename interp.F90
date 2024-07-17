@@ -26,8 +26,8 @@
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
                                     nsoil_input, &
-                                    cell_latitude_input_grid, &
-                                    cell_longitude_input_grid, &
+ !                                   cell_latitude_input_grid, &
+ !                                   cell_longitude_input_grid, &
                                     zgrid_input_grid, &
                                     zgrid_target_grid, &
                                     u_input_grid, &

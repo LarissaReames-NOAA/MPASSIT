@@ -1,24 +1,13 @@
 !> @file
 !! @brief Interpolate MPAS grid to a target grid.
 !!
-!! @author George Gayno NOAA/EMC
-
-!> Initialize an FV3 model run.
-!!
 !! Interpolate data from the unstructured MPAS mesh to a structured grid as defined
 !! by a WRF input/history file.
-!!
-!! This file reads a configuration namelist.
-!!
-!! Link the configuration namelist to ./fort.41. Then run the program
-!! with preferably a number of MPI tasks which the number of MPAS cells (NOT nodes) is 
-!! evenly divisible by (e.g., 36 (or 360) tasks for 36,000 input MPAS cells).
 !!
 !! @note For variable names “input” refers to the MPAS data input to the
 !! program . “Target” refers to the  target grid.
 !!
 !! @author Larissa Reames CIWRO/NOAA/NSSL/FRDD
-!! @return 0 for success, error code otherwise.
  program mpassit
 
  use mpi
@@ -108,7 +97,7 @@
 ! Create esmf grid objects for input and target grids.
 !-------------------------------------------------------------------------
 
- call define_target_grid(localpet, npets)
+ call define_target_grid(localpet, npets,'mpas')
  
  call define_input_grid(localpet, npets)
 

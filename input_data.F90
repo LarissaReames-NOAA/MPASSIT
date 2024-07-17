@@ -29,8 +29,8 @@
                                     valid_time, config_dt, &
                                     start_time, lsm_scheme, &
                                     mp_scheme, conv_scheme, &
-                                    cell_latitude_input_grid, &
-                                    cell_longitude_input_grid, &
+!                                    cell_latitude_input_grid, &
+!                                    cell_longitude_input_grid, &
                                     zgrid_input_grid, &
                                     input_diag_bundle, &
                                     target_diag_names, &
