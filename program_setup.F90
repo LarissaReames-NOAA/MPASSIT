@@ -54,8 +54,8 @@
                                                           !< Defaults to grid center (nx/2)
  real, public                    :: ref_y                 !< Grid-relative n-s index of reference point
                                                           !< Defaults to grid center (ny/2) 
- real, public                    :: pole_lat              !< Latitude of pole for target grid projection
- real, public                    :: pole_lon              !< Longitude of pole for target grid projection 
+ real, public                    :: pole_lat = -90.0      !< Latitude of pole for target grid projection
+ real, public                    :: pole_lon = 0.0        !< Longitude of pole for target grid projection 
  
  !These aren't namelist variables but they're created directly from them
  real, public                    :: dxkm                  !< grid-cell east-west dimension (meters)
@@ -111,8 +111,8 @@
   ref_lon = NAN
   dx = NAN
   dy = NAN
-  pole_lat = 90.0
-  pole_lon = 0.0
+!  pole_lat = 90.0
+!  pole_lon = 0.0
   nx = 0
   ny = 0                   
 
@@ -185,10 +185,21 @@
            (len_trim(map_proj) == len('LAT-LON'))) then
      proj_code = PROJ_LATLON
      map_proj_char = 'Lat/Lon'
+   else if ((index(map_proj, 'ROTATED LAT-LON') /= 0) .and. &
+           (len_trim(map_proj) == len('ROTATED LAT-LON'))) then
+     proj_code = PROJ_CASSINI
+     map_proj_char = 'Cylindrical Equidistant'
+     if (known_lat > 0.) then
+        pole_lat = 90. - known_lat
+        pole_lon = 180.
+        stand_lon = -known_lon
+     endif
+     dlondeg = dx
+     dlatdeg = dy
    else
      call error_handler('In namelist, invalid target_grid_type specified. Valid '// &
-                  'projections are "lambert", "mercator", "polar", and '// &
-                  '"lat-lon".',ERROR_CODE)
+                  'projections are "lambert", "mercator", "polar", '// &
+                  '"lat-lon", and "rotated lat-lon".',ERROR_CODE)
    end if
  
  
