@@ -83,17 +83,17 @@ module llxy_module
                           //'target data in push_source_projection().',ERROR_CODE)
   
       else if (iprojection == PROJ_CASSINI) then
-  
+ 
          call map_set(iprojection, proj_stack, &
                       latinc=user_dlat, &
                       loninc=user_dlon, &
                       stdlon=user_stand_lon, &  
-                      lat1=user_centerlat, &
-                      lon1=user_centerlon, &
+                      lat1=user_known_lat, &
+                      lon1=user_known_lon, &
                       lat0=user_pole_lat, &
                       lon0=user_pole_lon, &
-                      knowni=user_centeri, &
-                      knownj=user_centerj, &
+                      knowni=user_known_x, &
+                      knownj=user_known_y, &
                       r_earth=earth_radius)
   
       else if (iprojection == PROJ_LC) then
