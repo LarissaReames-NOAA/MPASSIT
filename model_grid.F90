@@ -190,9 +190,9 @@
  integer, public                       :: do_v10_interp
                                           !< whether 10-m v is requested for interpolation
  integer, public                       :: u10_ind
-                                          !< index of u10 in target_diag_bundle
+                                          !< index of u10 in input_diag_bundle
  integer, public                       :: v10_ind
-                                          !< index of v10 in target_diag_bundle
+                                          !< index of v10 in input_diag_bundle
  character(50), allocatable, public    :: target_diag_names(:), &
                                           target_hist_names_2d_cons(:), &
                                           target_hist_names_2d_nstd(:), &
@@ -485,7 +485,6 @@ do i = 1,nCellsPerPET
  enddo
 enddo
 !$OMP END PARALLEL DO
-print*, localpet, nVertThis_save, nVertThis-1, FINDLOC(elementConn, 0)
   if (localpet==0) print*, "- CREATE MESH -"
  input_grid = ESMF_MeshCreate(parametricDim=2, &
                      spatialDim=2, &
@@ -2443,6 +2442,7 @@ end subroutine unique_sort
       if (iwork2 > irank) iend = iend + 1
       return
    end subroutine para_range
+
  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Name: get_rotang
    !

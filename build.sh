@@ -8,6 +8,7 @@ target=${1:-"NULL"}
 compiler=${2:-"intel"}
 debug=${3:-"false"}
 
+export debug=true
 # If target is not set
 if [[ "$target" == "NULL" ]]; then
     source ./machine-setup.sh
