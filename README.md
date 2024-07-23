@@ -7,15 +7,21 @@ The main point of this program was to be able to interpolate fields from
 an MPAS mesh to a regular grid for data visualization and post-processing
 purposes. 
 
-
+Additional information to what's below can be found in the included MPASSIT_presentation.pdf.
 
 Compiling instructions: 
 
-1) Edit build.sh script.  Needed libraries: NETCDF, ESMF, MPI.
-  Note: If working on a RDHPCS machine (Hera, Jet, etc.) no edits should
-  be necessary 
+0)[Only necessary on non-RDHPCS machines]
+  Create an appropriate module file in the modulefiles subdirectory named build.[target].[compiler].lua
+  (if your machine supports lua modulefiles) or build.[target]. In this file you will need to load 
+  your desired compiling environment, including cmake and MPI. Environmental variables NETCDF and 
+  ESMFMKFILE are also necessary and should be pointed to the top directory of the NETCDF install and
+  the file esmf.mk of your ESMF install, respectively.  
 
-2) run build.sh
+  An example file that loads the build environment through modulefiles and the extra libraries
+  via LD_LIBRARY_PATH modification is provided in modulfiles/build.jet.test.intel.lua.
+
+1) run build.sh [target] [compiler]
 
 
 Run instructions:
@@ -50,6 +56,7 @@ Input/namelist:
   diag_file_input_grid="/scratch/wof/mpas/diag.2019-05-18_00.00.00.nc"
   file_target_grid="/scratch/wicker/27April2011/ICs/wrfinput_d01"
   output_file="/scratch/larissa.reames/out_hist_diag.nc"
+  block_decomp_file="/scratch/wof/mpas/wofs_mpas.graph.info.part.120"
   target_grid_type = 'lambert'
   interp_diag=.true.
   interp_hist=.true.
@@ -82,6 +89,8 @@ is_regional: Whether the target grid is regional or not (default:.true.)
 
 output_file : Full path of output file
 
+block_decomp_file : Full path to the MPAS grid-specific block decomposition file
+
 interp_diag : Whether to interpolate fields from the diag file (T/F)
 
 interp_hist : Whether to interpolate fields from the hist file (T/F)
@@ -96,9 +105,9 @@ nx : The number of target grid points in the east-west direction
 
 ny : The number of target grid pointers in the north-south direction
 
-dx : Grid size (meters) in the east-west direction
+dx : Grid size (meters, or deg for target_grid_type='lat-lon') in the east-west direction
 
-dy : Grid size (meters) in the north-south direction
+dy : Grid size (meters, or deg for target_grid_type='lat-lon') in the north-south direction
 
 ref_lat : Reference latitude of the target grid projection
 

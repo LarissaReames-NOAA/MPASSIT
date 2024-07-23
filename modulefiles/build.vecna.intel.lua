@@ -8,16 +8,18 @@ whatis([===[Loads libraries needed for building the UFS SRW App on Vecna ]===])
 load(pathJoin("compiler", "latest"))
 load(pathJoin("mpi", "latest"))
 
-prepend_path("MODULEPATH","/scratch/ywang/tools/hpc-stack/modulefiles/stack")
+prepend_path("MODULEPATH","/scratch/ywang/tools/intel/hpc-stack/modulefiles/stack")
 load(pathJoin("hpc", os.getenv("hpc_ver") or "1.2.0"))
-load(pathJoin("hpc-intel", os.getenv("hpc_intel_ver") or "2021.8.0"))
-load(pathJoin("hpc-impi", os.getenv("hpc_impi_ver") or "2021.8.0"))
+load(pathJoin("hpc-intel", os.getenv("hpc_intel_ver") or "2021.10.0"))
+load("hpc-openmpi/hpc-x-intel-classic")
 
 load("esmf")
 load("netcdf")
 
-setenv("CMAKE_C_COMPILER","mpiicc")
-setenv("CMAKE_CXX_COMPILER","mpiicpc")
-setenv("CMAKE_Fortran_COMPILER","mpiifort")
+setenv("MPI_HOME","/scratch/software/hpc-x-intel-classic/hpcx-ompi")
+
+setenv("CMAKE_C_COMPILER","mpicc")
+setenv("CMAKE_CXX_COMPILER","mpicxx")
+setenv("CMAKE_Fortran_COMPILER","mpifort")
 setenv("CMAKE_Platform","vecna.intel")
 
