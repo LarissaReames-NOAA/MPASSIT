@@ -1137,11 +1137,11 @@ contains
         endif
 !  z_s
 
-        if (localpet == 0) print *, "- WRITE TO FILE TARGET GRID Z_S"
-        if (localpet == 0) then
-            error = nf90_put_var(ncid, id_zs, zs_target_grid, count=(/nsoil_input, 1/))
-            call netcdf_err(error, 'WRITING ZS RECORD')
-        end if
+        !if (localpet == 0) print *, "- WRITE TO FILE TARGET GRID Z_S"
+        !if (localpet == 0) then
+        !    error = nf90_put_var(ncid, id_zs, zs_target_grid, count=(/nsoil_input, 1/))
+        !    call netcdf_err(error, 'WRITING ZS RECORD')
+        !end if
 
 !  hgt
 

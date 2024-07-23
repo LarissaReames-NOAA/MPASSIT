@@ -135,9 +135,10 @@
      if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegrid", rc)
 
-     if (do_u10_interp==1 .and. do_v10_interp==1 .and. proj_code==PROJ_LC) then
-        call rotate_winds_cgrid(localpet,2)
-     endif
+     !if (do_u10_interp==1 .and. do_v10_interp==1) then
+     !   if( proj_code==PROJ_LC .or. proj_code=PROJ_CASSINI) then
+     !   call rotate_winds_cgrid(localpet,2)
+     !endif
   end subroutine interp_diag_data
 
   subroutine init_target_diag_fields(localpet)
@@ -288,9 +289,10 @@
          call error_handler("IN FieldRegrid", rc)
     endif
 
-    if (do_u_interp==1 .and. do_v_interp==1 .and. proj_code==PROJ_LC) then
-       call rotate_winds_cgrid(localpet,3)
-    endif
+    !if (do_u_interp==1 .and. do_v_interp==1) then
+    !    if (proj_code==PROJ_LC .or. proj_code=PROJ_CASSINI) then
+    !   call rotate_winds_cgrid(localpet,3)
+    !endif
 
     if (do_u_interp==1) then
        if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
@@ -686,67 +688,67 @@
 
  end subroutine init_target_hist_fields
 
- subroutine rotate_winds_cgrid(localpet,wind_dim)
-      use constants_module
-      implicit none
-      integer, intent(in) :: localpet, wind_dim
-      real(esmf_kind_r8), pointer, dimension(:,:,:) :: u_ptr3, v_ptr3
-      real(esmf_kind_r8), pointer, dimension(:,:) :: u_ptr2, v_ptr2
-      real(esmf_kind_r8), pointer, dimension(:,:)   :: cosa, sina  
-      type(esmf_field), allocatable    :: fields(:) 
-      integer, dimension(2)            ::  clb, cub        
-      double precision :: tana
-      integer :: i,j,rc
-
-      if (wind_dim==3) then
-         call ESMF_FieldGet(u_target_grid_nostag,farrayPtr = u_ptr3,rc=rc)
-           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-               call error_handler("IN FieldGet", rc)
-         call ESMF_FieldGet(v_target_grid_nostag,farrayPtr = v_ptr3,rc=rc)
-           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-               call error_handler("IN FieldGet", rc)
-      elseif(wind_dim==2) then
-         allocate (fields(n_diag_fields))
-         call ESMF_FieldBundleGet(target_diag_bundle, fieldList=fields, &
-                                  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
-                                  rc=rc)
-         if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-             call error_handler("IN FieldBundleGet", rc)
-         call ESMF_FieldGet(fields(u10_ind),farrayPtr = u_ptr2,rc=rc)
-           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-               call error_handler("IN FieldGet", rc)
-         call ESMF_FieldGet(fields(v10_ind),farrayPtr = v_ptr2,rc=rc)
-           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-               call error_handler("IN FieldGet", rc)
-         deallocate(fields)
-      else
-         call error_handler("In rotate_winds_cgrid: input wind_dim must equal 2 (for 10-m winds) or 3 (for 3-d winds)", -1)
-      endif
-
-      call ESMF_FieldGet(cosa_target_grid,farrayPtr = cosa, &
-                         computationalLBound=clb,&
-                         computationalUBound=cub, rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-            call error_handler("IN FieldGet", rc)
-      call ESMF_FieldGet(sina_target_grid,farrayPtr = sina, &
-                         rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
-            call error_handler("IN FieldGet", rc)   
-
-      print*, localpet, clb(2), cub(2)
-      do j = clb(2),cub(2)
-      do i = clb(1),cub(1)
-         tana = sina(i,j)/cosa(i,j)
-         if (wind_dim==3) then
-            u_ptr3(i,j,:) = (u_ptr3(i,j,:) + v_ptr3(i,j,:) * tana) / (cosa(i,j) + sina(i,j) * tana)
-            v_ptr3(i,j,:) = (v_ptr3(i,j,:) - u_ptr3(i,j,:) * sina(i,j)) / cosa(i,j)
-         elseif(wind_dim==2) then
-            u_ptr2(i,j) = (u_ptr2(i,j) + v_ptr2(i,j) * tana) / (cosa(i,j) + sina(i,j) * tana)
-            v_ptr2(i,j) = (v_ptr2(i,j) - u_ptr2(i,j) * sina(i,j)) / cosa(i,j)
-         endif
-      enddo
-      enddo
-   end subroutine rotate_winds_cgrid
+! subroutine rotate_winds_cgrid(localpet,wind_dim)
+!      use constants_module
+!      implicit none
+!      integer, intent(in) :: localpet, wind_dim
+!      real(esmf_kind_r8), pointer, dimension(:,:,:) :: u_ptr3, v_ptr3
+!      real(esmf_kind_r8), pointer, dimension(:,:) :: u_ptr2, v_ptr2
+!      real(esmf_kind_r8), pointer, dimension(:,:)   :: cosa, sina  
+!      type(esmf_field), allocatable    :: fields(:) 
+!      integer, dimension(2)            ::  clb, cub        
+!      double precision :: tana
+!      integer :: i,j,rc
+!
+!      if (wind_dim==3) then
+!         call ESMF_FieldGet(u_target_grid_nostag,farrayPtr = u_ptr3,rc=rc)
+!           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!               call error_handler("IN FieldGet", rc)
+!         call ESMF_FieldGet(v_target_grid_nostag,farrayPtr = v_ptr3,rc=rc)
+!           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!               call error_handler("IN FieldGet", rc)
+!      elseif(wind_dim==2) then
+!         allocate (fields(n_diag_fields))
+!         call ESMF_FieldBundleGet(target_diag_bundle, fieldList=fields, &
+!                                  itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+!                                  rc=rc)
+!         if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
+!             call error_handler("IN FieldBundleGet", rc)
+!         call ESMF_FieldGet(fields(u10_ind),farrayPtr = u_ptr2,rc=rc)
+!           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!               call error_handler("IN FieldGet", rc)
+!         call ESMF_FieldGet(fields(v10_ind),farrayPtr = v_ptr2,rc=rc)
+!           if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!               call error_handler("IN FieldGet", rc)
+!         deallocate(fields)
+!      else
+!         call error_handler("In rotate_winds_cgrid: input wind_dim must equal 2 (for 10-m winds) or 3 (for 3-d winds)", -1)
+!      endif
+!
+!      call ESMF_FieldGet(cosa_target_grid,farrayPtr = cosa, &
+!                         computationalLBound=clb,&
+!                         computationalUBound=cub, rc=rc)
+!        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!            call error_handler("IN FieldGet", rc)
+!      call ESMF_FieldGet(sina_target_grid,farrayPtr = sina, &
+!                         rc=rc)
+!        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+!            call error_handler("IN FieldGet", rc)   
+!
+!      
+!      do j = clb(2),cub(2)
+!      do i = clb(1),cub(1)
+!         tana = sina(i,j)/cosa(i,j)
+!         if (wind_dim==3) then
+!            u_ptr3(i,j,:) = (u_ptr3(i,j,:) + v_ptr3(i,j,:) * tana) / (cosa(i,j) + sina(i,j) * tana)
+!            v_ptr3(i,j,:) = (v_ptr3(i,j,:) - u_ptr3(i,j,:) * sina(i,j)) / cosa(i,j)
+!         elseif(wind_dim==2) then
+!            u_ptr2(i,j) = (u_ptr2(i,j) + v_ptr2(i,j) * tana) / (cosa(i,j) + sina(i,j) * tana)
+!            v_ptr2(i,j) = (v_ptr2(i,j) - u_ptr2(i,j) * sina(i,j)) / cosa(i,j)
+!         endif
+!      enddo
+!      enddo
+!   end subroutine rotate_winds_cgrid
 
 end module interp
 

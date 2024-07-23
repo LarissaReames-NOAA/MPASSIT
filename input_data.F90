@@ -16,12 +16,8 @@
  use esmf
  use netcdf
  use utils_mod
- use program_setup, only          : hist_file_input_grid, &
-                                    diag_file_input_grid, &
-                                    grid_file_input_grid, &
-                                    interp_diag, interp_hist, &
-                                    wrf_mod_vars
-
+ use program_setup
+ use misc_definitions_module, only : PROJ_LC
  use model_grid, only             : input_grid,        &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
@@ -261,6 +257,10 @@
 
  deallocate( dummy)
 
+ if (do_u10_interp==1 .and. do_v10_interp==1) then
+    if(localpet==0) print*, "Rotate 10-m winds"
+    call rotate_winds(localpet,2)
+ endif
  end subroutine read_input_diag_data
 
  subroutine init_input_diag_fields(localpet)
@@ -699,6 +699,11 @@
     enddo
     nullify(varptr2)
     deallocate(dummy3)
+ endif
+
+ if (do_u_interp==1 .and. do_v_interp==1) then
+    if(localpet==0) print*, "Rotate 3-D winds"
+    call rotate_winds(localpet,3)
  endif
 
 !-------------------------------------------------------------------------------
@@ -1192,4 +1197,75 @@ subroutine read_varlist(localpet, file,nfields,field_names,field_names_target)
    close(14)
 
 end subroutine read_varlist
- end module input_data
+
+subroutine rotate_winds(localpet,wind_dim)
+   use constants_module
+   implicit none
+   integer, intent(in) :: localpet, wind_dim
+   real(esmf_kind_r8), pointer, dimension(:,:) :: u_ptr3, v_ptr3
+   real(esmf_kind_r8), pointer, dimension(:) :: u_ptr2, v_ptr2
+   real(esmf_kind_r8), pointer, dimension(:)   :: lat, lon  
+   type(esmf_field), allocatable    :: fields(:) 
+   integer, dimension(1)            ::  clb, cub        
+   double precision :: sina, cosa, tana
+   real :: diff, alpha
+   integer :: i,j,rc
+
+   if (wind_dim==3) then
+      call ESMF_FieldGet(u_input_grid,farrayPtr = u_ptr3,rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+      call ESMF_FieldGet(v_input_grid,farrayPtr = v_ptr3,rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+   elseif(wind_dim==2) then
+      allocate (fields(n_diag_fields))
+      call ESMF_FieldBundleGet(input_diag_bundle, fieldList=fields, &
+                               itemorderflag=ESMF_ITEMORDER_ADDORDER, &
+                               rc=rc)
+      if (ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
+          call error_handler("IN FieldBundleGet", rc)
+      call ESMF_FieldGet(fields(u10_ind),farrayPtr = u_ptr2,rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+      call ESMF_FieldGet(fields(v10_ind),farrayPtr = v_ptr2,rc=rc)
+        if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+      deallocate(fields)
+   else
+      call error_handler("In rotate_winds: input wind_dim must equal 2 (for 10-m winds) or 3 (for 3-d winds)", -1)
+   endif
+   call ESMF_FieldGet(cell_latitude_input_grid, farrayPtr = lat, rc=rc)
+      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+   call ESMF_FieldGet(cell_longitude_input_grid, farrayPtr = lon, rc=rc)
+      if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+            call error_handler("IN FieldGet", rc)
+
+   do i = 1,nCellsPerPET
+      diff = -1 * (lon(i) - stand_lon)
+      if (diff > 180.) then
+         diff = diff - 360.
+      else if (diff < -180.) then
+         diff = diff + 360.
+      end if
+
+      ! Calculate the rotation angle, alpha, in radians
+      if (proj_code == PROJ_LC) then
+         alpha = diff * cone *  rad_per_deg * hemi
+      else
+         alpha = diff * rad_per_deg * hemi 
+      end if
+      sina = sin(alpha)
+      cosa = cos(alpha)
+      tana = sina/cosa
+      if (wind_dim==3) then
+         u_ptr3(i,:) = (u_ptr3(i,:) + v_ptr3(i,:) * tana) / (cosa + sina * tana)
+         v_ptr3(i,:) = (v_ptr3(i,:) - u_ptr3(i,:) * sina) / cosa
+      elseif(wind_dim==2) then
+         u_ptr2(i) = (u_ptr2(i) + v_ptr2(i) * tana) / (cosa + sina * tana)
+         v_ptr2(i) = (v_ptr2(i) - u_ptr2(i) * sina) / cosa
+      endif
+   enddo
+ end subroutine rotate_winds
+end module input_data
