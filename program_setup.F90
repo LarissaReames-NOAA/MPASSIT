@@ -54,8 +54,6 @@
                                                           !< Defaults to grid center (nx/2)
  real, public                    :: ref_y                 !< Grid-relative n-s index of reference point
                                                           !< Defaults to grid center (ny/2) 
- real, public                    :: pole_lat              !< Latitude of pole for target grid projection
- real, public                    :: pole_lon              !< Longitude of pole for target grid projection 
  
  !These aren't namelist variables but they're created directly from them
  real, public                    :: dxkm                  !< grid-cell east-west dimension (meters)
@@ -66,6 +64,11 @@
  real, public                    :: known_lon             !< Longitude of reference point
  real, public                    :: known_x               !< Grid-relative e-w index of reference point
  real, public                    :: known_y               !< Grid-relative n-s index of reference point 
+ real, public                    :: pole_lat = -90.0      !< Latitude of pole for target grid projection
+ real, public                    :: pole_lon = 0.0        !< Longitude of pole for target grid projection
+ real, public                    :: cone                  !< Projection cone (valid only for proj_code=PROJ_LC)
+ real, public                    :: hemi                  !< Projection hemisphere (valid only for proj_code=PROJ_LC or
+                                                          !<  PROJ_CASSINI)
  integer, public                 :: proj_code             !< Integer code corresponding to the requested
                                                           !< target grid projection type
  character(len=500), public      :: map_proj_char         !< Map projection name
@@ -81,6 +84,7 @@
 
 !> Reads program configuration namelist.
 !!
+!! @oaran unum unit number to use for namelist file (default 41)
 !! @param filename the name of the configuration file (defaults to
 !! ./fort.41).
 !! @author Larissa Reames CIWRO/NOAA/NSSL/FRDD
@@ -111,8 +115,8 @@
   ref_lon = NAN
   dx = NAN
   dy = NAN
-  pole_lat = 90.0
-  pole_lon = 0.0
+!  pole_lat = 90.0
+!  pole_lon = 0.0
   nx = 0
   ny = 0                   
 
@@ -170,7 +174,11 @@
       (len_trim(map_proj) == len('LAMBERT'))) then
      proj_code = PROJ_LC 
      map_proj_char = 'Lambert Conformal'
-
+     IF (truelat1 .LT. 0.) THEN
+        hemi = -1.0
+     ELSE
+        hemi = 1.0
+     ENDIF
    else if ((index(map_proj, 'MERCATOR') /= 0) .and. &
            (len_trim(map_proj) == len('MERCATOR'))) then
      proj_code = PROJ_MERC 
@@ -185,10 +193,26 @@
            (len_trim(map_proj) == len('LAT-LON'))) then
      proj_code = PROJ_LATLON
      map_proj_char = 'Lat/Lon'
+   else if ((index(map_proj, 'ROTATED LAT-LON') /= 0) .and. &
+           (len_trim(map_proj) == len('ROTATED LAT-LON'))) then
+     proj_code = PROJ_CASSINI
+     map_proj_char = 'Cylindrical Equidistant'
+     if (known_lat > 0.) then
+        pole_lat = 90. - known_lat
+        pole_lon = 180.
+        stand_lon = -known_lon
+     endif
+     dlondeg = dx
+     dlatdeg = dy
+     IF (truelat1 .LT. 0.) THEN
+        hemi = -1.0
+     ELSE
+        hemi = 1.0
+     ENDIF
    else
      call error_handler('In namelist, invalid target_grid_type specified. Valid '// &
-                  'projections are "lambert", "mercator", "polar", and '// &
-                  '"lat-lon".',ERROR_CODE)
+                  'projections are "lambert", "mercator", "polar", '// &
+                  '"lat-lon", and "rotated lat-lon".',ERROR_CODE)
    end if
  
  
@@ -229,9 +253,12 @@
    end if
  
  ! Manually set truelat2 = truelat1 if truelat2 not specified for Lambert
-  if (proj_code==PROJ_LC .and. truelat2 == NAN) then
-     if (truelat1 == NAN) call error_handler("No TRUELAT1 specified for Lambert conformal projection.",ERROR_CODE) 
-     truelat2 = truelat1
+  if (proj_code==PROJ_LC) then 
+     if (truelat2 == NAN) then
+        if (truelat1 == NAN) call error_handler("No TRUELAT1 specified for Lambert conformal projection.",ERROR_CODE) 
+        truelat2 = truelat1
+     endif
+     call lc_cone(truelat1, truelat2, cone)
   endif
   
   ! If the user hasn't supplied a known_x and known_y, assume the center of domain 1
@@ -247,5 +274,44 @@
  return
  
  end subroutine read_setup_namelist
+
+!> Compute the cone factor of a Lambert Conformal projection
+!!
+!! @param truelat1 Projection true latitude 1
+!! @param truelat2 Projection true latitude 2 
+!! @param cone LCC Projection cone (output) 
+!! @author Larissa Reames CIWRO/NOAA/NSSL/FRDD
+ SUBROUTINE lc_cone(truelat1, truelat2, cone)
+
+      IMPLICIT NONE
+
+      ! Input Args
+      REAL, INTENT(IN)             :: truelat1  ! (-90 -> 90 degrees N)
+      REAL, INTENT(IN)             :: truelat2  !   "   "  "   "     "
+
+      ! Output Args
+      REAL, INTENT(OUT)            :: cone
+
+      ! Locals
+
+      ! BEGIN CODE
+
+      ! First, see if this is a secant or tangent projection.  For tangent
+      ! projections, truelat1 = truelat2 and the cone is tangent to the
+      ! Earth's surface at this latitude.  For secant projections, the cone
+      ! intersects the Earth's surface at each of the distinctly different
+      ! latitudes
+      IF (ABS(truelat1-truelat2) .GT. 0.1) THEN
+         cone = ALOG10(COS(truelat1*rad_per_deg)) - &
+                ALOG10(COS(truelat2*rad_per_deg))
+         cone = cone /(ALOG10(TAN((45.0 - ABS(truelat1)/2.0) * rad_per_deg)) - &
+                ALOG10(TAN((45.0 - ABS(truelat2)/2.0) * rad_per_deg)))
+      ELSE
+         cone = SIN(ABS(truelat1)*rad_per_deg )
+      ENDIF
+
+      RETURN
+
+ END SUBROUTINE lc_cone
 
  end module program_setup

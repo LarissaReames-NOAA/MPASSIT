@@ -190,9 +190,9 @@
  integer, public                       :: do_v10_interp
                                           !< whether 10-m v is requested for interpolation
  integer, public                       :: u10_ind
-                                          !< index of u10 in target_diag_bundle
+                                          !< index of u10 in input_diag_bundle
  integer, public                       :: v10_ind
-                                          !< index of v10 in target_diag_bundle
+                                          !< index of v10 in input_diag_bundle
  character(50), allocatable, public    :: target_diag_names(:), &
                                           target_hist_names_2d_cons(:), &
                                           target_hist_names_2d_nstd(:), &
@@ -278,7 +278,6 @@
                                           elemCoords(:), hgt(:)
  real(esmf_kind_r8), pointer           :: data_1d(:), data_1d2(:)
  real(esmf_kind_r8), parameter         :: PI=4.D0*DATAN(1.D0)
- integer :: myCells_num
 
  the_file = grid_file_input_grid
 
@@ -347,7 +346,7 @@
 
  
  allocate(vertOnCell(maxEdges,nCells))
- allocate(zs_target_grid(nsoil_input,1))
+! allocate(zs_target_grid(nsoil_input,1))
 
  ! GET CELL CENTER LAT/LON
  if (localpet==0) print*,'- READ LONCELL ID'
@@ -421,9 +420,6 @@
  nVertThis = 0
  k = 0
  if (block_decomp_file=='NULL') then
-     !nCellsPerPET = ceiling(real(nCells)/real(npets))
-     !cell_start = localpet*nCellsPerPET+1
-     !cell_end = min(localpet*nCellsPerPET+nCellsPerPET,nCells)
      call para_range(1, nCells, npets, localpet, cell_start, cell_end)
      nCellsPerPET = cell_end - cell_start + 1
      allocate(elemIDs(nCellsPerPET))
@@ -442,12 +438,16 @@
  allocate(elemTypes2(nCellsPerPET))
  
  if (localpet==0) print*, "- Create PET-local element connectivity "
+
+!! Create arrays of element types and coordinates for each element on the process
 !$OMP PARALLEL DO $PRIVATE(i,j,n)
  do i = 1,nCellsPerPET
     j = elemIDs(i)
-    !elemIDs(j) = i
-    elemTypes2(i) = count(vertOnCell(:,elemIDs(i))/=0)
+    elemTypes2(i) = count(vertOnCell(:,j)/=0)
+    !Count up the number of vertices (including duplicates) on this process
     nVertThis = nVertThis + elemTypes2(i)
+    
+    !Assign coordinates
     elemCoords(2*i-1) = lonCell(j)*180.0_esmf_kind_r8/PI
     if (elemCoords(2*i-1) > 180.0_esmf_kind_r8) then
         elemCoords(2*i-1) = elemCoords(2*i-1) - 360.0_esmf_kind_r8
@@ -456,10 +456,11 @@
     elementConn_temp(maxEdges*(i-1)+1:maxEdges*i) = vertOnCell(:,j)
  enddo
 !$OMP END PARALLEL DO
- !allocate(nodeCoords(2*k), nodeIDs(k), elementConn(nVertThis))
  call unique_sort(elementConn_temp,maxEdges*nCellsPerPET,nodeIDs)
  nNodesPerPET=size(nodeIDs)
  allocate(nodeCoords(2*nNodesPerPET))
+
+! Assign node coordinates
 !$OMP PARALLEL DO 
 do j = 1,nNodesPerPET
    i = nodeIDs(j)
@@ -474,9 +475,10 @@ allocate(elementConn(nVertThis))
 nVertThis = 0
 !$OMP PARALLEL DO
 do i = 1,nCellsPerPET
+ k = elemIDs(i)
  do j = 1,maxEdges
-   if(vertOnCell(j,i)/=0) then
-     temp = FINDLOC(nodeIDs,vertOnCell(j,elemIDs(i)))
+   if(vertOnCell(j,k)/=0) then
+     temp = FINDLOC(nodeIDs,vertOnCell(j,k))
      elementConn(nVertThis+1) = temp(1)
      nVertThis = nVertThis + 1
    endif
@@ -674,7 +676,7 @@ enddo
  !----------------------------------------------------------------------
  call push_source_projection(proj_code, stand_lon, truelat1, truelat2, &
               dxkm, dykm, dlatdeg, dlondeg, known_x, known_y, &
-              known_lat, known_lon)
+              known_lat, known_lon, pole_lat, pole_lon)
                               
 !-----------------------------------------------------------------------
 ! Create ESMF grid object for the model grid.
@@ -2397,8 +2399,10 @@ end subroutine unique_sort
      if ( trim(line) .eq. '' ) cycle
      nlines = nlines+1
    enddo
-   if (nlines /= ncells) call error_handler("BLOCK DECOMPOSITION FILE CONTAINS MORE CELLS THAN INPUT GRID", -1)
-
+   if (nlines /= ncells) then
+        print*, "NLINES", nlines, "NCELLS", ncells
+        call error_handler("BLOCK DECOMPOSITION FILE CONTAINS MORE CELLS THAN INPUT GRID", -1)
+   endif
    allocate(myCells_temp(ncells))
   
    myCells_num = 0
@@ -2438,6 +2442,7 @@ end subroutine unique_sort
       if (iwork2 > irank) iend = iend + 1
       return
    end subroutine para_range
+
  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
    ! Name: get_rotang
    !
