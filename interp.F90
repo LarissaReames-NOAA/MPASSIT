@@ -82,16 +82,13 @@
 
  private
 
- type realptr_2d
-   real(esmf_kind_r8), pointer :: p(:,:)
-                                       !< array of 1d pointers
+ type realptr_2d                         !< array to hold 2d pointers
+   real(esmf_kind_r8), pointer :: p(:,:)  !< 2d pointer
  end type realptr_2d
-                                       !< pointer to hold array of 2d pointers
-  type realptr_3d
-   real(esmf_kind_r8), pointer :: p(:,:,:)
-                                       !< array of 2d pointers
+
+  type realptr_3d                          !< array to hold 3d pointers
+   real(esmf_kind_r8), pointer :: p(:,:,:) !< 3d pointer
  end type realptr_3d
-                                       !< pointer to hold array of 3d pointers
 
  public :: interp_data
 
@@ -169,11 +166,16 @@
      call ESMF_FieldBundleGet(out_bundle,i,field,rc=rc)
       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
        call error_handler("IN FieldBundleGet", rc)
+     call ESMF_FieldGet(field,name=fname,rc=rc)
+       if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
+           call error_handler("IN FieldGet", rc)
      if (nd==2) then
+        if(localpet==0) print*, '- FIELDGET 2D', fname
         call ESMF_FieldGet(field,farrayPtr=fptr2(i)%p,rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
            call error_handler("IN FieldGet", rc)
      elseif (nd==3) then
+        if(localpet==0) print*, '- FIELDGET 3D', fname
         call ESMF_FieldGet(field,farrayPtr=fptr3(i)%p,rc=rc)
          if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__))&
            call error_handler("IN FieldGet", rc)
@@ -326,12 +328,15 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
     integer                          :: l(1), u(1)
     integer                          :: rc, nfields, ij, i, j, n
     integer                          :: isrctermprocessing
+    integer                          :: clb_target(2), cub_target(2)
     type(ESMF_RegridMethod_Flag)     :: method
     type(ESMF_RouteHandle)           :: rh_cons, rh_nstd
     type(ESMF_Field), allocatable    :: fields(:)
     type(ESMF_Field), allocatable    :: fields_input_grid(:), fields_target_grid(:)
     real(esmf_kind_r8), pointer      :: field_ptr2(:,:), field_ptr3(:,:,:)
-    integer(esmf_kind_i4), pointer   :: unmapped_ptr_u(:), unmapped_ptr_v(:)
+    integer(esmf_kind_i4), pointer   :: unmapped_ptr_u(:), unmapped_ptr_v(:), &
+                                        mask_target_ptr(:,:)
+    real(esmf_kind_r8), pointer   :: hgt_target_ptr(:,:)
     logical                          :: u_regrid, v_regrid
     call init_target_hist_fields(localpet)
 
@@ -357,6 +362,35 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
     call fill_missing_field(localpet,hgt_input_grid, hgt_target_grid,2,i_target, j_target, &
                             method,bilinear_regrid,unmapped_ptr_bi)
 
+   !-----------------------------------------------------------------------
+   ! First, set the mask on the target and input grids.
+   !-----------------------------------------------------------------------
+
+    if (localpet==0) print*,"- CALL GridAddItem FOR TARGET GRID."
+    call ESMF_GridAddItem(target_grid, &
+                       itemflag=ESMF_GRIDITEM_MASK, &
+                       staggerloc=ESMF_STAGGERLOC_CENTER, rc=rc)
+    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+      call error_handler("IN GridAddItem", rc)
+
+    if (localpet==0) print*,"- CALL GridGetItem FOR TARGET GRID."
+    call ESMF_GridGetItem(target_grid, &
+                       itemflag=ESMF_GRIDITEM_MASK, &
+                       farrayPtr=mask_target_ptr, rc=rc)
+    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+      call error_handler("IN GridGetItem", rc)
+
+    if (localpet==0) print*,"- CALL FieldGet FOR TARGET GRID HGT."
+    call ESMF_FieldGet(hgt_target_grid, &
+                    computationalLBound=clb_target, &
+                    computationalUBound=cub_target, &
+                    farrayPtr=hgt_target_ptr, rc=rc)
+    if(ESMF_logFoundError(rcToCheck=rc,msg=ESMF_LOGERR_PASSTHRU,line=__LINE__,file=__FILE__)) &
+      call error_handler("IN FieldGet", rc)
+
+    mask_target_ptr = 0
+    where (.not. (hgt_target_ptr ==missing_value)) mask_target_ptr = 1 ! outside input data masked
+
     if (n_hist_fields_2d_patch > 0) then
         method = ESMF_REGRIDMETHOD_BILINEAR
         if (localpet==0) print*,"- CREATE HIST BUNDLE PATCH REGRID ROUTEHANDLE"
@@ -364,6 +398,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
         call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_patch, target_hist_bundle_2d_patch, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE, &
                                          rc=rc)
@@ -386,6 +421,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
       call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nz, target_hist_bundle_3d_nz, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
@@ -408,6 +444,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        call ESMF_FieldRegridStore(u_input_grid,u_target_grid_nostag, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                         srcTermProcessing=isrctermprocessing, &
                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                         rc=rc)
@@ -425,6 +462,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        call ESMF_FieldRegridStore(v_input_grid,v_target_grid_nostag, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                         srcTermProcessing=isrctermprocessing, &
                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                         rc=rc)
@@ -446,6 +484,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        call ESMF_FieldRegridStore(u_target_grid_nostag, u_target_grid, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                         srcTermProcessing=isrctermprocessing, &
                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                         unmappedDstList=unmapped_ptr_u, &
@@ -467,6 +506,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        call ESMF_FieldRegridStore(v_target_grid_nostag, v_target_grid, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                         srcTermProcessing=isrctermprocessing, &
                                         unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                         rc=rc)
@@ -488,6 +528,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_nzp1, target_hist_bundle_3d_nzp1, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
@@ -510,6 +551,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        call ESMF_FieldBundleRegridStore(input_hist_bundle_3d_vert,target_hist_bundle_3d_vert, &
                                          regridmethod=method, &
                                          routehandle=rh_patch, &
+                                         dstmaskvalues=(/0/), &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          rc=rc)
@@ -531,6 +573,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
           call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_cons, target_hist_bundle_2d_cons, &
                                             regridmethod=method, &
                                             routehandle=rh_cons, &
+                                         dstmaskvalues=(/0/), &
                                             srcTermProcessing=isrctermprocessing, &
                                             unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                             rc=rc)
@@ -556,6 +599,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
           call ESMF_FieldRegridStore(fields_input_grid(1), fields_target_grid(1), &
                                       regridmethod=method, &
                                       routehandle=rh_cons, &
+                                         dstmaskvalues=(/0/), &
                                       srcTermProcessing=isrctermprocessing, &
                                       unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                       unmappedDstList=unmapped_ptr_cons, &
@@ -588,6 +632,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        call ESMF_FieldBundleRegridStore(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, &
                                          regridmethod=method, &
                                          routehandle=rh_nstd, &
+                                         dstmaskvalues=(/0/), &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          extrapMethod=ESMF_EXTRAPMETHOD_NONE,&
@@ -596,6 +641,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
         call error_handler("IN FieldBundleRegridStore", rc)
 
+       if (localpet==0) print*,"- REGRID HIST BUNDLE NSTD"
        call ESMF_FieldBundleRegrid(input_hist_bundle_2d_nstd, target_hist_bundle_2d_nstd, rh_nstd, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldBundleRegrid", rc)
@@ -606,9 +652,11 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
     endif
 
     if (n_hist_fields_soil>0) then
+        if (localpet==0) print*,"- CREATE HIST BUNDLE SOIL REGRID ROUTEHANDLE"
         call ESMF_FieldBundleRegridStore(input_hist_bundle_soil, target_hist_bundle_soil, &
                                          regridmethod=method, &
                                          routehandle=rh_nstd, &
+                                         dstmaskvalues=(/0/), &
                                          srcTermProcessing=isrctermprocessing, &
                                          unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
                                          extrapMethod=ESMF_EXTRAPMETHOD_NONE,&
