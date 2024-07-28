@@ -388,8 +388,8 @@
  call netcdf_err(error, 'reading zs id')
 
  if (localpet==0) print*,'- READ ZS'
- error=nf90_get_var(ncid, id_var, start=(/1,1/),count=(/nsoil_input,1/),values=zs_target_grid)
- call netcdf_err(error, 'reading ZS')
+ !error=nf90_get_var(ncid, id_var, start=(/1,1/),count=(/nsoil_input,1/),values=zs_target_grid)
+ !call netcdf_err(error, 'reading ZS')
 
  if (localpet==0) print*,'- READ HGT'
  error=nf90_inq_varid(ncid, 'ter', id_var)

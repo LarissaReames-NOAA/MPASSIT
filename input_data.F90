@@ -1206,9 +1206,9 @@ subroutine rotate_winds(localpet,wind_dim)
    real(esmf_kind_r8), pointer, dimension(:) :: u_ptr2, v_ptr2
    real(esmf_kind_r8), pointer, dimension(:)   :: lat, lon  
    type(esmf_field), allocatable    :: fields(:) 
-   integer, dimension(1)            ::  clb, cub        
-   double precision :: sina, cosa, tana
-   real :: diff, alpha
+   !integer, dimension(1)            ::  clb, cub        
+   double precision :: sina, cosa
+   real :: diff, alpha, utmp3(nz_input), vtmp3(nz_input),utmp2, vtmp2
    integer :: i,j,rc
 
    if (wind_dim==3) then
@@ -1243,7 +1243,7 @@ subroutine rotate_winds(localpet,wind_dim)
             call error_handler("IN FieldGet", rc)
 
    do i = 1,nCellsPerPET
-      diff = -1 * (lon(i) - stand_lon)
+      diff = -1 * (lon(i) * deg_per_rad - stand_lon)
       if (diff > 180.) then
          diff = diff - 360.
       else if (diff < -180.) then
@@ -1258,13 +1258,16 @@ subroutine rotate_winds(localpet,wind_dim)
       end if
       sina = sin(alpha)
       cosa = cos(alpha)
-      tana = sina/cosa
       if (wind_dim==3) then
-         u_ptr3(i,:) = (u_ptr3(i,:) + v_ptr3(i,:) * tana) / (cosa + sina * tana)
-         v_ptr3(i,:) = (v_ptr3(i,:) - u_ptr3(i,:) * sina) / cosa
+         utmp3(:) = u_ptr3(i,:)
+         vtmp3(:) = v_ptr3(i,:)
+         u_ptr3(i,:) = cosa * utmp3 - sina * vtmp3
+         v_ptr3(i,:) = sina * utmp3 + cosa * vtmp3
       elseif(wind_dim==2) then
-         u_ptr2(i) = (u_ptr2(i) + v_ptr2(i) * tana) / (cosa + sina * tana)
-         v_ptr2(i) = (v_ptr2(i) - u_ptr2(i) * sina) / cosa
+         utmp2 = u_ptr2(i)
+         vtmp2 = v_ptr2(i)
+         u_ptr2(i) = cosa * utmp2 - sina * vtmp2
+         v_ptr2(i) = sina * utmp2 + cosa * vtmp2
       endif
    enddo
  end subroutine rotate_winds

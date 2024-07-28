@@ -434,51 +434,39 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
 
     endif
 
+ !   if (do_u_interp==1) then
+ !      if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
+ !       
+ !      call ESMF_FieldRegridStore(u_input_grid,u_target_grid_nostag, &
+ !                                       regridmethod=method, &
+ !                                       routehandle=rh_patch, &
+ !                                       srcTermProcessing=isrctermprocessing, &
+ !                                       unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+ !                                       rc=rc)
+ !       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+ !         call error_handler("IN FieldRegridStore", rc)
+
+ !      call ESMF_FieldRegrid(u_input_grid,u_target_grid_nostag, rh_patch, rc=rc)
+ !       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+ !        call error_handler("IN FieldRegrid", rc)
+
+ !   endif
+
+ !   if (do_v_interp==1) then
+ !      if (localpet==0) print*, "- CREATE REGRID uReconstructMeridional ROUTEHANDLE"
+
+ !      call ESMF_FieldRegridStore(v_input_grid,v_target_grid_nostag, &
+ !                                       regridmethod=method, &
+ !                                       routehandle=rh_patch, &
+ !                                       srcTermProcessing=isrctermprocessing, &
+ !                                       unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
+ !                                       rc=rc)
+ !       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
+ !         call error_handler("IN FieldRegridStore", rc)
     if (do_u_interp==1) then
        if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
        method = ESMF_REGRIDMETHOD_BILINEAR
-       call ESMF_FieldRegridStore(u_input_grid,u_target_grid_nostag, &
-                                        regridmethod=method, &
-                                        routehandle=rh_patch, &
-                                         dstmaskvalues=(/0/), &
-                                        srcTermProcessing=isrctermprocessing, &
-                                        unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
-                                        rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
-          call error_handler("IN FieldRegridStore", rc)
-
-       call ESMF_FieldRegrid(u_input_grid,u_target_grid_nostag, rh_patch, rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
-         call error_handler("IN FieldRegrid", rc)
-    endif
-
-    if (do_v_interp==1) then
-       if (localpet==0) print*, "- CREATE REGRID uReconstructMeridional ROUTEHANDLE"
-       method = ESMF_REGRIDMETHOD_BILINEAR
-       call ESMF_FieldRegridStore(v_input_grid,v_target_grid_nostag, &
-                                        regridmethod=method, &
-                                        routehandle=rh_patch, &
-                                         dstmaskvalues=(/0/), &
-                                        srcTermProcessing=isrctermprocessing, &
-                                        unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
-                                        rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
-          call error_handler("IN FieldRegridStore", rc)
-
-       call ESMF_FieldRegrid(v_input_grid,v_target_grid_nostag, rh_patch, rc=rc)
-        if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
-         call error_handler("IN FieldRegrid", rc)
-    endif
-
-    !if (do_u_interp==1 .and. do_v_interp==1) then
-    !    if (proj_code==PROJ_LC .or. proj_code=PROJ_CASSINI) then
-    !   call rotate_winds_cgrid(localpet,3)
-    !endif
-
-    if (do_u_interp==1) then
-       if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
-       method = ESMF_REGRIDMETHOD_BILINEAR
-       call ESMF_FieldRegridStore(u_target_grid_nostag, u_target_grid, &
+       call ESMF_FieldRegridStore(u_input_grid, u_target_grid, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
                                          dstmaskvalues=(/0/), &
@@ -489,7 +477,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldRegridStore", rc)
 
-       call ESMF_FieldRegrid(u_target_grid_nostag,u_target_grid, rh_patch, rc=rc)
+       call ESMF_FieldRegrid(u_input_grid,u_target_grid, rh_patch, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldRegrid", rc)
 
@@ -500,7 +488,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
     if (do_v_interp==1) then
        if (localpet==0) print*, "- CREATE REGRID uReconstructMeridional ROUTEHANDLE"
        method = ESMF_REGRIDMETHOD_BILINEAR
-       call ESMF_FieldRegridStore(v_target_grid_nostag, v_target_grid, &
+       call ESMF_FieldRegridStore(v_input_grid, v_target_grid, &
                                         regridmethod=method, &
                                         routehandle=rh_patch, &
                                          dstmaskvalues=(/0/), &
@@ -510,7 +498,7 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
           call error_handler("IN FieldRegridStore", rc)
 
-       call ESMF_FieldRegrid(v_target_grid_nostag,v_target_grid, rh_patch, rc=rc)
+       call ESMF_FieldRegrid(v_input_grid,v_target_grid, rh_patch, rc=rc)
         if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
          call error_handler("IN FieldRegrid", rc)
  
