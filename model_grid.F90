@@ -445,8 +445,7 @@
 !$OMP PARALLEL DO $PRIVATE(i,j,n)
  do i = 1,nCellsPerPET
     j = elemIDs(i)
-    !elemIDs(j) = i
-    elemTypes2(i) = count(vertOnCell(:,elemIDs(i))/=0)
+    elemTypes2(i) = count(vertOnCell(:,j)/=0)
     nVertThis = nVertThis + elemTypes2(i)
     elemCoords(2*i-1) = lonCell(j)*180.0_esmf_kind_r8/PI
     if (elemCoords(2*i-1) > 180.0_esmf_kind_r8) then
@@ -456,7 +455,6 @@
     elementConn_temp(maxEdges*(i-1)+1:maxEdges*i) = vertOnCell(:,j)
  enddo
 !$OMP END PARALLEL DO
- !allocate(nodeCoords(2*k), nodeIDs(k), elementConn(nVertThis))
  call unique_sort(elementConn_temp,maxEdges*nCellsPerPET,nodeIDs)
  nNodesPerPET=size(nodeIDs)
  allocate(nodeCoords(2*nNodesPerPET))
@@ -474,9 +472,12 @@ allocate(elementConn(nVertThis))
 nVertThis = 0
 !$OMP PARALLEL DO
 do i = 1,nCellsPerPET
- do j = 1,maxEdges
-   if(vertOnCell(j,i)/=0) then
-     temp = FINDLOC(nodeIDs,vertOnCell(j,elemIDs(i)))
+  k = elemIDs(i)
+  do j = 1,maxEdges
+!    if(vertOnCell(j,i)/=0) then
+!    temp = FINDLOC(nodeIDs,vertOnCell(j,elemIDs(i)))
+   if(vertOnCell(j,k)/=0) then
+     temp = FINDLOC(nodeIDs,vertOnCell(j,k))
      elementConn(nVertThis+1) = temp(1)
      nVertThis = nVertThis + 1
    endif
