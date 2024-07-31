@@ -123,7 +123,7 @@ contains
 
         type(esmf_field), allocatable    :: fields(:), field_write_2d(:), field_extra3(:)
         type(timedelta)                 :: xtime_dt
-        integer :: clb(2), cub(2)
+        integer :: clb(2), cub(2), clbu(2), cubu(2), clbv(2), cubv(2)
         real :: start,finish
         real(esmf_kind_r8), pointer :: dumptr_3d(:,:,:)
  
@@ -1042,136 +1042,169 @@ contains
 
 !  longitude
 
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LONGITUDE"
-        call ESMF_FieldGather(longitude_target_grid, dum2d, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID LONGITUDE"
+        call ESMF_FieldGet(longitude_target_grid, farrayPtr=dum2dptr, computationalLBound=clb,&
+                             computationalUBound = cub, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
-
+            call error_handler("IN FieldGet", error)
+		
+		dum2d(:,:) = dum2dptr(clb(1):cub(1),clb(2):cub(2))
+		count1 = cub(1)-clb(1)+1
+		count2 = cub(2)-clb(2)+1		
         !if (localpet == 0) then
-            dum2dt(:, :, 1) = dum2d
-            error = nf90_put_var(ncid, id_lon, dum2dt, count=(/i_target, j_target, 1/))
+            !dum2dt(:, :, 1) = dum2d
+            error = nf90_put_var(ncid, id_lon, dum2d, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1, count2, 1/)))
             call netcdf_err(error, 'WRITING LONGITUDE RECORD')
         !end if
 
 !  latitude
 
-        !if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LATITUDE"
-        call ESMF_FieldGather(latitude_target_grid, dum2d, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID LATITUDE"
+        call ESMF_FieldGet(latitude_target_grid, farrayPtr=dum2dptr, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
-
+            call error_handler("IN FieldGet", error)
+		
+		dum2d(:,:) = dum2dptr(clb(1):cub(1),clb(2):cub(2))
         !if (localpet == 0) then
             dum2dt(:, :, 1) = dum2d
-            error = nf90_put_var(ncid, id_lat, dum2dt, count=(/i_target, j_target, 1/))
+            error = nf90_put_var(ncid, id_lat, dum2d, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1, count2, 1/)))
             call netcdf_err(error, 'WRITING LATITUDE RECORD')
         !end if
 
+
 !  longitude on u grid
-        !if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LONGITUDE U"
-        call ESMF_FieldGather(longitude_u_target_grid, dum2du, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGetFOR TARGET GRID LONGITUDE U"
+        call ESMF_FieldGet(longitude_u_target_grid, dum2ptr, rootPet=0,  computationalLBound=clbu,&
+                             computationalUBound = cubu, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
+            call error_handler("IN FieldGet", error)
+            
+		dum2du = dum2dptr(clb(1):cub(1),clb(2):cub(2))
+		count1u = cubu(1)-clbu(1)+1
+		count2u = cubu(2)-clbu(2)+1
         !if (localpet == 0) then
             dum2dtu(:,:,1) = dum2du
-            error = nf90_put_var(ncid, id_lonu, dum2dtu, count=(/i_target+1, j_target, 1/))
+            error = nf90_put_var(ncid, id_lonu, dum2du, start = (/clbu(1),clbu(2),1/),  &
+                                   count=(/count1u, count2u, 1/)))
             call netcdf_err(error, 'WRITING XLONG_U RECORD')
         !end if
 
 !  latitude on u grid
 
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LATITUDE U"
-        call ESMF_FieldGather(latitude_u_target_grid, dum2du, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID LATITUDE U"
+        call ESMF_FieldGet(latitude_u_target_grid, dum2dptr, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
+            call error_handler("IN FieldGet", error)
+            
+        dum2du = dum2dptr(clbu(1):cubu(1),clbu(2):cubu(2))
         !if (localpet == 0) then
-            dum2dtu(:,:,1) = dum2du
-            error = nf90_put_var(ncid, id_latu, dum2dtu, count=(/i_target+1, j_target, 1/))
+            error = nf90_put_var(ncid, id_latu, dum2du, start = (/clbu(1),clbu(2),1/),  &
+                                   count=(/count1u, count2u, 1/)))
             call netcdf_err(error, 'WRITING XLAT_U RECORD')
         !end if
 
 !  latitude on v grid
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LATITUDE V"
-        call ESMF_FieldGather(latitude_v_target_grid, dum2dv(:, :), rootPet=0, rc=error)
+		if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID LATITUDE V"
+        call ESMF_FieldGet(latitude_v_target_grid, dum2dptr, rootPet=0,  computationalLBound=clbv,&
+                             computationalUBound = cubv, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
+            call error_handler("IN FieldGet", error)
+            
+		count1v = cubv(1)-clbv(1)+1
+		count2v = cubv(2)-clbv(2)+1
+            
+        dum2dv = dum2dptr(clbv(1):cubv(1),clbv(2):cubv(2))
         !if (localpet == 0) then
-            dum2dtv(:,:,1) = dum2dv
-            error = nf90_put_var(ncid, id_latv, dum2dtv, count=(/i_target, j_target+1, 1/))
-            call netcdf_err(error, 'WRITING XLAT_V RECORD')
+            error = nf90_put_var(ncid, id_latv, dum2dv, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1v, count2v, 1/)))
+            call netcdf_err(error, 'WRITING XLAT_U RECORD')
         !end if
 
 !  longitude on v grid
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LONGITUDE V"
-        call ESMF_FieldGather(longitude_v_target_grid, dum2dv, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID LONGITUDE V"
+        call ESMF_FieldGet(longitude_v_target_grid, dum2dptr, rootPet=0,  computationalLBound=clb,&
+                             computationalUBound = cub, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
+            call error_handler("IN FieldGet", error)
+            
+
+        dum2dv = dum2dptr(clbv(1):cubv(1),clbv(2):cubv(2))
         !if (localpet == 0) then
-            dum2dtv(:,:,1) = dum2dv
-            error = nf90_put_var(ncid, id_lonv, dum2dtv, count=(/i_target, j_target+1, 1/))
-            call netcdf_err(error, 'WRITING XLONG_V RECORD')
+            error = nf90_put_var(ncid, id_lonv, dum2dv, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1v, count2v, 1/)))
+            call netcdf_err(error, 'WRITING XLAT_U RECORD')
         !end if
 
 ! mapfac on mass grid
 
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID mapfac_m"
-        call ESMF_FieldGather(mapfac_m_target_grid, dum2d, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID mapfac_m"
+        call ESMF_FieldGet(mapfac_m_target_grid, dum2dptr, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
-
+            call error_handler("IN FieldGet", error)
+            
+		dum2d = dum2dptr(clb(1):cub(1),clb(2):cub(2))
         !if (localpet == 0) then
-            dum2dt(:, :, 1) = dum2d
-            error = nf90_put_var(ncid, id_mfm, dum2dt, count=(/i_target, j_target, 1/))
+            error = nf90_put_var(ncid, id_mfm, dum2d, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1, count2, 1/)))
             call netcdf_err(error, 'WRITING MAPFAC_M RECORD')
         !end if
 
 ! mapfac on u grid
 
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID mapfac_u"
-        call ESMF_FieldGather(mapfac_u_target_grid, dum2du, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID mapfac_u"
+        call ESMF_FieldGet(mapfac_u_target_grid,dum2dptr, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
-
-        if (localpet == 0) then
-            dum2dtu(:, :, 1) = dum2du
-            error = nf90_put_var(ncid, id_mfu, dum2dtu, count=shape(dum2dtu))
+            call error_handler("IN FieldGet", error)
+            
+        dum2du = dum2dptr(clbu(1):cubu(1),clbu(2):cubu(2))
+        !if (localpet == 0) then
+            error = nf90_put_var(ncid, id_mfu, dum2du, start = (/clbu(1),clbu(2),1/),  &
+                                   count=(/count1u, count2u, 1/)))
             call netcdf_err(error, 'WRITING MAPFAC_U RECORD')
         end if
 
 !mapfac on v grid
 
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID mapfac_v"
-        call ESMF_FieldGather(mapfac_v_target_grid, dum2dv, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGet FOR TARGET GRID mapfac_v"
+        call ESMF_FieldGet(mapfac_v_target_grid, dum2dptr, rootPet=0,  computationalLBound=clb,&
+                             computationalUBound = cub, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
+            call error_handler("IN FieldGet", error)
+            
 
-        if (localpet == 0) then
-            dum2dtv(:, :, 1) = dum2dv
-            error = nf90_put_var(ncid, id_mfv, dum2dtv, count=shape(dum2dtv))
+        dum2dv = dum2dptr(clbv(1):cubv(1),clbv(2):cubv(2))
+        !if (localpet == 0) then
+            error = nf90_put_var(ncid, id_lmfv, dum2du, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1v, count2v, 1/)))
             call netcdf_err(error, 'WRITING MAPFAC_V RECORD')
         end if
 
         if (PROJ_CODE==PROJ_LC) then
 !sinalpha
         if (localpet == 0) print*, "- CALL FieldGather FOR TARGET GRID sinalpha"
-        call ESMF_FieldGather(sina_target_grid, dum2d, rootPet=0, rc=error)
+        call ESMF_FieldGather(sina_target_grid, dum2dptr, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
-
-        if (localpet == 0) then
-            dum2dt(:, :, 1) = dum2d
-            error = nf90_put_var(ncid, id_sina, dum2dt, count=shape(dum2dt))
+            call error_handler("IN FieldGet", error)
+            
+		dum2d = dum2dptr(clb(1):cub(1),clb(2):cub(2))
+        !if (localpet == 0) then
+            error = nf90_put_var(ncid, id_sina dum2d, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1, count2, 1/)))
             call netcdf_err(error, 'WRITING SINALPHA RECORD')
         end if
 
 !cosalpha
         if (localpet == 0) print*, "- CALL FieldGather FOR TARGET GRID cosalpha"
-        call ESMF_FieldGather(cosa_target_grid, dum2d, rootPet=0, rc=error)
+        call ESMF_FieldGather(cosa_target_grid, dum2dptr, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
-
-        if (localpet == 0) then
-            dum2dt(:, :, 1) = dum2d
-            error = nf90_put_var(ncid, id_cosa, dum2dt, count=shape(dum2dt))
+            call error_handler("IN FieldGet", error)
+            
+		dum2d = dum2dptr(clb(1):cub(1),clb(2):cub(2))
+        !if (localpet == 0) then
+            error = nf90_put_var(ncid, id_cosa, dum2d, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1, count2, 1/)))
             call netcdf_err(error, 'WRITING COSALPHA RECORD')
         end if
         endif
@@ -1185,67 +1218,55 @@ contains
 
 !  hgt
 
-        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID LATITUDE"
-        call ESMF_FieldGather(hgt_target_grid, dum2d, rootPet=0, rc=error)
+        if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID HGT"
+        call ESMF_FieldGet(hgt_target_grid, dum2dptr, rootPet=0, rc=error)
         if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-            call error_handler("IN FieldGather", error)
-
-        if (localpet == 0) print *, "- WRITE TO FILE TARGET GRID HGT"
-        if (localpet == 0) then
-            dum2dt(:, :, 1) = dum2d
-            error = nf90_put_var(ncid, id_hgt, dum2dt, count=(/i_target, j_target, 1/))
+            call error_handler("IN FieldGet", error)
+            
+		dum2d = dum2dptr(clb(1):cub(1),clb(2):cub(2))
+		if (localpet == 0) print *, "- WRITE TO FILE TARGET GRID HGT"
+        !if (localpet == 0) then
+            error = nf90_put_var(ncid, id_hgt dum2d, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1, count2, 1/)))
             call netcdf_err(error, 'WRITING HGT RECORD')
         end if
 !   u
        if (do_u_interp == 1) then
           if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID U"
-          if (localpet == 0) then 
-            allocate (dum3dtmp(i_target + 1, j_target, nz_input))
-          else
-            allocate (dum3dtmp(0,0,0))
-          endif
-          call ESMF_FieldGather(u_target_grid, dum3dtmp, rootPet=0, rc=error)
+
+          allocate (dum3dtmp(count1u, count2u, nz_input))
+
+          call ESMF_FieldGet(u_target_grid, dum3dptr, rootPet=0, rc=error)
           if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-             call error_handler("IN FieldGather", error)
+             call error_handler("IN FieldGet", error)
 
           if (localpet == 0) print *, "- WRITE TO FILE TARGET GRID U"
-          if (localpet == 0) then
-              call cpu_time(start)
-              error = nf90_put_var(ncid, id_u, dum3dtmp, count=(/i_target + 1, j_target, nz_input, 1/))
+		  dum3dtmp(:,:,:) = dum3dptr(clbu(1):cubu(1),clbu(2):cub(2),:)
+              error = nf90_put_var(ncid, id_u, dum3dtmp,  start = (/clbu(1),clbu(2),1,1/),  &
+                                   count=(/count1u, count2u, nz_input,1/)))
               call netcdf_err(error, 'WRITING U RECORD')
-              call cpu_time(finish)
-              print '("Time = ",f6.3," seconds.")',finish-start
-          end if
+
           deallocate(dum3dtmp)
        endif
 
 !   v
        if (do_v_interp == 1) then
           if (localpet == 0) print *, "- CALL FieldGather FOR TARGET GRID V"
-          !if (localpet == 0) then
-          !  allocate (dum3dtmp(i_target, j_target + 1, nz_input))
-          !else
-          !  allocate (dum3dtmp(0,0,0))
-          !endif
-          !call ESMF_FieldGather(v_target_grid, dum3dtmp, rootPet=0, rc=error)
-          !if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
-          !   call error_handler("IN FieldGather", error)
-          call ESMF_FieldGet(v_target_grid, farrayPtr=dumptr_3d, computationalLBound=clb,&
-                             computationalUBound = cub, rc=error)
+
+          allocate (dum3dtmp(count1v, count2v, nz_input))
+
+          call ESMF_FieldGet(v_target_grid, farrayPtr=dum3dptr, rc=error)
           if (ESMF_logFoundError(rcToCheck=error, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__, file=__FILE__)) &
              call error_handler("IN FieldGet", error)
           dum3dtmp(:,:,:) = dumptr_3d(clb(1):cub(1),clb(2):cub(2),:)
-          allocate(dum3dtmp(cub(1)-clb(1)+1, cub(2)-clb(2)+1, nz_input))
+
           if (localpet == 0) print *, "- WRITE TO FILE TARGET GRID V"
-          if (localpet == 0) call cpu_time(start)
-              ! set to use MPI/PnetCDF collective I/O
-              error =  nf90_var_par_access(ncid, id_v, NF90_COLLECTIVE)
-              call netcdf_err(error ,'SETTING PAR ACCESS ON V')
-              error = nf90_put_var(ncid, id_v, dum3dtmp, start = (/clb(1),clb(2),1,1/),  &
-                                   count=(/cub(1)-clb(1)+1, cub(2)-clb(2)+1, nz_input, 1/))
-              call netcdf_err(error, 'WRITING V RECORD')
-          if (localpet==0) call cpu_time(finish)
-          if (localpet==0) print '("Time = ",f6.3," seconds.")',finish-start
+		  ! set to use MPI/PnetCDF collective I/O
+		  error =  nf90_var_par_access(ncid, id_v, NF90_COLLECTIVE)
+		  call netcdf_err(error ,'SETTING PAR ACCESS ON V')
+		  error = nf90_put_var(ncid, id_v, dum3dtmp, start = (/clbv(1),clbv(2),1,1/),  &
+							   count=(/count1v, count2v, nz_input, 1/))
+		  call netcdf_err(error, 'WRITING V RECORD')
           deallocate(dum3dtmp)
        endif
 
@@ -1311,7 +1332,8 @@ contains
             if (localpet == 0) then
                 print *, "- WRITE TO FILE ", trim(varname)
                 dum2dt(:, :, 1) = dum2d
-                error = nf90_put_var(ncid, id_vars2(i), dum2dt, count=(/i_target, j_target, 1/))
+                error = nf90_put_var(ncid, id_vars2(i), dum2dt, start = (/clb(1),clb(2),1/),  &
+                                   count=(/count1, count2, 1/)))
                 call netcdf_err(error, 'WRITING RECORD')
             end if
         end do
