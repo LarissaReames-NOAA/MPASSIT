@@ -476,7 +476,10 @@ nVertThis = 0
 !$OMP PARALLEL DO
 do i = 1,nCellsPerPET
  k = elemIDs(i)
- do j = 1,maxEdges
+  k = elemIDs(i)
+  do j = 1,maxEdges
+!    if(vertOnCell(j,i)/=0) then
+!    temp = FINDLOC(nodeIDs,vertOnCell(j,elemIDs(i)))
    if(vertOnCell(j,k)/=0) then
      temp = FINDLOC(nodeIDs,vertOnCell(j,k))
      elementConn(nVertThis+1) = temp(1)
