@@ -16,7 +16,8 @@ Compiling instructions:
   (if your machine supports lua modulefiles) or build.[target]. In this file you will need to load 
   your desired compiling environment, including cmake and MPI. Environmental variables NETCDF and 
   ESMFMKFILE are also necessary and should be pointed to the top directory of the NETCDF install and
-  the file esmf.mk of your ESMF install, respectively.  
+  the file esmf.mk of your ESMF install, respectively. Note that this code requires NetCDF compiled
+  with hdf5. 
 
   An example file that loads the build environment through modulefiles and the extra libraries
   via LD_LIBRARY_PATH modification is provided in modulfiles/build.jet.test.intel.lua.
@@ -119,6 +120,7 @@ truelat2 : Second true latitude of target grid projection (for target_grid_type=
 
 stand_lon : Standard longitude of the target grid projection (for target_grid_type='lambert')
 
+missing_value : Value to be used as _FillValue for unmappable target points (default = -9999.0)
 
 3) Submit to job queue (most grids won't need more then 3 nodes/72 processes)
 
