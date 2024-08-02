@@ -1373,8 +1373,11 @@ contains
                         if (wrf_mod_vars .and. trim(varname) == 'T') then
                             do i = 1, i_target
                             do j = 1, j_target
-                                if (dum3d(i, j, 1) == missing_value) cycle
-                                dum3dt(i, j, :, 1) = dum3d(i, j, :) - 300.0
+                                if (dum3d(i, j, 1) == missing_value) then
+                                   dum3dt(i,j,:,1) = missing_value
+                                else
+                                   dum3dt(i, j, :, 1) = dum3d(i, j, :) - 300.0
+                                endif
                             end do
                             end do
                         else
