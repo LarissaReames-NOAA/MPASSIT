@@ -35,7 +35,9 @@
  character(len=500), public      :: target_grid_type      !< Grid type to interpolate data to
                                                           !< Valid options: 'file', 'lambert',
                                                           !< 'mercator','polar',lat-lon'     
- character(len=500), public      :: block_decomp_file = "NULL"  !< Full path to MPAS grid-specific block decomposition file                                                                                                                                                                 
+ character(len=500), public      :: block_decomp_file = "NULL"  !< Full path to MPAS grid-specific block decomposition file
+ real(kind=4), public      :: missing_value = -9999.   !< Value to be used for mapped data outside of input data
+
  !! These entries are only valid when target_grid_type is not 'file'
  logical, public                 :: is_regional = .true.  !< Is the output grid regional or global? 
                                                           !< Default: True   
@@ -103,7 +105,8 @@
  namelist /config/ grid_file_input_grid, diag_file_input_grid, hist_file_input_grid, &
             file_target_grid, output_file, interp_diag, interp_hist, &
             wrf_mod_vars, esmf_log,target_grid_type,nx,ny,dx,dy,ref_lat,ref_lon,ref_x,ref_y,&
-            truelat1,truelat2,stand_lon,is_regional,pole_lat,pole_lon, interp_as_bundle,block_decomp_file
+            truelat1,truelat2,stand_lon,is_regional,pole_lat,pole_lon, interp_as_bundle,block_decomp_file, &
+            missing_value
 
   ref_x = NAN
   ref_y = NAN

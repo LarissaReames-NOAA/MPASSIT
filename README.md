@@ -119,6 +119,7 @@ truelat2 : Second true latitude of target grid projection (for target_grid_type=
 
 stand_lon : Standard longitude of the target grid projection (for target_grid_type='lambert')
 
+missing_value : Value to be used as _FillValue for unmappable target points (default = -9999.0)
 
 3) Submit to job queue (most grids won't need more then 3 nodes/72 processes)
 

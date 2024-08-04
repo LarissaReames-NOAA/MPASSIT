@@ -28,7 +28,7 @@ contains
                                  stand_lon, proj_code, map_proj_char, &
                                  i_target, j_target, dx, &
                                  ref_lat, ref_lon, pole_lat, &
-                                 pole_lon
+                                 pole_lon, missing_value
 
         use model_grid, only: target_grid, &
                               ip1_target, jp1_target, &
@@ -95,8 +95,7 @@ contains
 
         character(len=128)               :: outfile
         character(len=50)                :: varname
-        character(len=20)                 :: tempstr(1, 19)
-
+        character(len=20)                :: tempstr(1, 19)
         integer, parameter               :: Datestrlen = 19
         integer                          :: error, ncid, n, rc, i, j, k, m
         integer                          :: header_buffer_val = 16384
@@ -125,6 +124,7 @@ contains
         type(esmf_field), allocatable    :: fields(:), field_write_2d(:), field_extra3(:)
         type(timedelta)                 :: xtime_dt
 
+ 
         n2d = n_diag_fields + n_hist_fields_2d_patch + n_hist_fields_2d_nstd + n_hist_fields_2d_cons
         allocate (field_write_2d(n2d), id_vars2(n2d))
         allocate (field_extra3(n2d))  !allocate large incase all diag fields are 3d
@@ -324,6 +324,7 @@ contains
             error = nf90_put_att(ncid, id_lon, "FieldType", 104)
             call netcdf_err(error, 'DEFINING FieldType')
 
+        
             error = nf90_def_var(ncid, 'XLONG_U', NF90_FLOAT, (/dim_lon_stag, dim_lat, dim_time/), id_lonu)
             call netcdf_err(error, 'DEFINING GEOLON FIELD')
             error = nf90_put_att(ncid, id_lonu, "description", "LONGITUDE, WEST IS NEGATIVE")
@@ -520,6 +521,8 @@ contains
             call netcdf_err(error, 'DEFINING STAGGER')
             error = nf90_put_att(ncid, id_hgt, "FieldType", 104)
             call netcdf_err(error, 'DEFINING FieldType')
+            error = nf90_put_att(ncid, id_hgt, "_FillValue", missing_value)
+            call netcdf_err(error, 'DEFINING _FillValue')
 
             error = nf90_def_var(ncid, 'Times', NF90_CHAR, (/dim_str, dim_time/), id_times)
             call netcdf_err(error, 'DEFINING Times FIELD')
@@ -598,6 +601,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGER')
                         error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars2(k), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                     end if
                 else
                     m = m + 1
@@ -618,6 +623,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGER')
                         error = nf90_put_att(ncid, id_vars3_nz(m), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars3_nz(m), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                     end if
                 end if
             end do
@@ -656,6 +663,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGE')
                         error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars2(k), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                     end if
                 end do
                 deallocate (fields)
@@ -691,6 +700,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGE')
                         error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars2(k), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                     end if
                 end do
                 deallocate (fields)
@@ -725,6 +736,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGER')
                         error = nf90_put_att(ncid, id_vars2(k), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars2(k), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                     end if
                 end do
                 deallocate (fields)
@@ -757,6 +770,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGER')
                         error = nf90_put_att(ncid, id_vars_soil(i), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars_soil(i), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                     end if
                 end do
                 deallocate (fields)
@@ -790,6 +805,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGER')
                         error = nf90_put_att(ncid, id_vars3_nz(i + n3d), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars3_nz(i + n3d), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
 
                         if (wrf_mod_vars .and. trim(varname) == 'MUB') then
                             print *, "- DEFINE ON FILE STAGGERED TARGET GRID MU"
@@ -807,6 +824,8 @@ contains
                             call netcdf_err(error, 'DEFINING STAGGER')
                             error = nf90_put_att(ncid, id_mu, "FieldType", 104)
                             call netcdf_err(error, 'DEFINING FieldType')
+                            error = nf90_put_att(ncid, id_mu, "_FillValue", missing_value)
+                            call netcdf_err(error, 'DEFINING _FillValue')
                         end if
 
                         if (wrf_mod_vars .and. trim(varname) == 'P_HYD') then
@@ -823,6 +842,8 @@ contains
                             call netcdf_err(error, 'DEFINING STAGGER')
                             error = nf90_put_att(ncid, id_ptop, "FieldType", 104)
                             call netcdf_err(error, 'DEFINING FieldType')
+                            error = nf90_put_att(ncid, id_ptop, "_FillValue", missing_value)
+                            call netcdf_err(error, 'DEFINING _FillValue')
                         end if
                     end if
                 end do
@@ -845,6 +866,8 @@ contains
                call netcdf_err(error, 'DEFINING STAGGER')
                error = nf90_put_att(ncid, id_u, "FieldType", 104)
                call netcdf_err(error, 'DEFINING FieldType')
+               error = nf90_put_att(ncid, id_u, "_FillValue", missing_value)
+               call netcdf_err(error, 'DEFINING _FillValue')
             endif
 
             if (do_v_interp==1) then
@@ -863,6 +886,8 @@ contains
                call netcdf_err(error, 'DEFINING STAGGER')
                error = nf90_put_att(ncid, id_v, "FieldType", 104)
                call netcdf_err(error, 'DEFINING FieldType')
+               error = nf90_put_att(ncid, id_v, "_FillValue", missing_value)
+               call netcdf_err(error, 'DEFINING _FillValue')
             endif
             endif
 
@@ -900,7 +925,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGER')
                         error = nf90_put_att(ncid, id_vars3_nzp1(i), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
-
+                        error = nf90_put_att(ncid, id_vars3_nzp1(i), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                         if (wrf_mod_vars .and. trim(varname) == 'PHB') then
                             print *, "- DEFINE ON FILE STAGGERED TARGET GRID PH"
                             error = nf90_def_var(ncid, 'PH', NF90_FLOAT, (/dim_lon, dim_lat, dim_zp1, dim_time/), id_ph)
@@ -917,6 +943,8 @@ contains
                             call netcdf_err(error, 'DEFINING STAGGER')
                             error = nf90_put_att(ncid, id_ph, "FieldType", 104)
                             call netcdf_err(error, 'DEFINING FieldType')
+                            error = nf90_put_att(ncid, id_ph, "_FillValue", missing_value)
+                            call netcdf_err(error, 'DEFINING _FillValue')
                         end if
                     end if
                 end do
@@ -950,6 +978,8 @@ contains
                         call netcdf_err(error, 'DEFINING STAGGER')
                         error = nf90_put_att(ncid, id_vars3_vert(i), "FieldType", 104)
                         call netcdf_err(error, 'DEFINING FieldType')
+                        error = nf90_put_att(ncid, id_vars3_vert(i), "_FillValue", missing_value)
+                        call netcdf_err(error, 'DEFINING _FillValue')
                     end if
                 end do
                 deallocate (fields)
@@ -974,6 +1004,8 @@ contains
             call netcdf_err(error, 'DEFINING STAGGER')
             error = nf90_put_att(ncid, id_dummy3d_p, "FieldType", 104)
             call netcdf_err(error, 'DEFINING FieldType')
+            error = nf90_put_att(ncid, id_dummy3d_p, "_FillValue", missing_value)
+            call netcdf_err(error, 'DEFINING _FillValue')
 
             varname = 'PB'
             print *, "- DEFINE ON FILE TARGET GRID ", varname
@@ -991,6 +1023,8 @@ contains
             call netcdf_err(error, 'DEFINING STAGGER')
             error = nf90_put_att(ncid, id_dummy3d_pb, "FieldType", 104)
             call netcdf_err(error, 'DEFINING FieldType')
+            error = nf90_put_att(ncid, id_dummy3d_pb, "_FillValue", missing_value)
+            call netcdf_err(error, 'DEFINING _FillValue')
         END IF
 
         if (localpet == 0) then
@@ -1339,8 +1373,11 @@ contains
                         if (wrf_mod_vars .and. trim(varname) == 'T') then
                             do i = 1, i_target
                             do j = 1, j_target
-                                if (dum3d(i, j, 1) < 10.0_esmf_kind_r8) continue
-                                dum3dt(i, j, :, 1) = dum3d(i, j, :) - 300.0
+                                if (dum3d(i, j, 1) == missing_value) then
+                                   dum3dt(i,j,:,1) = missing_value
+                                else
+                                   dum3dt(i, j, :, 1) = dum3d(i, j, :) - 300.0
+                                endif
                             end do
                             end do
                         else
@@ -1363,7 +1400,7 @@ contains
                             dum1d(1) = maxval(dum3d)
                             do i = 1, i_target
                             do j = 1, j_target
-                                if (dum3d(i, j, nz_input) >= 10.0_esmf_kind_r8) then
+                                if (.not. dum3d(i, j, nz_input)== missing_value) then
                                     dum1d(1) = min(dum3d(i, j, nz_input)*0.80_esmf_kind_r8, dum1d(1))
                                 end if
                             end do
@@ -1406,8 +1443,10 @@ contains
                     if (trim(varname) == 'PHB') then
                         do n = 1, i_target
                         do j = 1, j_target
+                        if (dum3dp1(n,j,1) == missing_value) cycle
                         do k = 2, nzp1_input
                             dum3dt(n, j, k - 1, 1) = 0.5*(dum3dp1(n, j, k) + dum3dp1(n, j, k - 1))
+                            dum3dp1(n,j, k - 1) = dum3dp1(n,j, k - 1) * 9.81
                         end do
                         end do
                         end do
@@ -1415,7 +1454,7 @@ contains
                         error = nf90_put_var(ncid, id_z, dum3dt, count=(/i_target, j_target, nz_input, 1/))
                         call netcdf_err(error, 'WRITING RECORD')
 
-                        dum3dp1 = dum3dp1*9.81
+                        !dum3dp1 = dum3dp1*9.81
                     end if
 
                     print *, trim(varname), minval(dum3dp1), maxval(dum3dp1)
@@ -1468,7 +1507,7 @@ contains
             print *, "- SET DUMMY VALUES FOR TARGET GRID ", trim(varname)
 
             dum3d = 0.0
-            print *, trim(varname), minval(dum3d), maxval(dum3d)
+            !print *, trim(varname), minval(dum3d), maxval(dum3d)
             dum3dt(:, :, :, 1) = dum3d
             error = nf90_put_var(ncid, id_dummy3d_p, dum3dt, count=(/i_target, j_target, nz_input, 1/))
             call netcdf_err(error, 'WRITING RECORD')
