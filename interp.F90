@@ -13,7 +13,7 @@
  use esmf
  use netcdf
  use utils_mod
- use misc_definitions_module, only : PROJ_LC
+ use misc_definitions_module, only : PROJ_LC, PROJ_CASSINI
  use program_setup, only          : hist_file_input_grid, &
                                     diag_file_input_grid, &
                                     grid_file_input_grid, &
@@ -434,35 +434,6 @@ subroutine fill_missing_field(localpet,in_field,out_field,nd,nx,ny,method, &
 
     endif
 
- !   if (do_u_interp==1) then
- !      if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
- !       
- !      call ESMF_FieldRegridStore(u_input_grid,u_target_grid_nostag, &
- !                                       regridmethod=method, &
- !                                       routehandle=rh_patch, &
- !                                       srcTermProcessing=isrctermprocessing, &
- !                                       unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
- !                                       rc=rc)
- !       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
- !         call error_handler("IN FieldRegridStore", rc)
-
- !      call ESMF_FieldRegrid(u_input_grid,u_target_grid_nostag, rh_patch, rc=rc)
- !       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
- !        call error_handler("IN FieldRegrid", rc)
-
- !   endif
-
- !   if (do_v_interp==1) then
- !      if (localpet==0) print*, "- CREATE REGRID uReconstructMeridional ROUTEHANDLE"
-
- !      call ESMF_FieldRegridStore(v_input_grid,v_target_grid_nostag, &
- !                                       regridmethod=method, &
- !                                       routehandle=rh_patch, &
- !                                       srcTermProcessing=isrctermprocessing, &
- !                                       unmappedaction=ESMF_UNMAPPEDACTION_IGNORE,&
- !                                       rc=rc)
- !       if(ESMF_logFoundError(rcToCheck=rc, msg=ESMF_LOGERR_PASSTHRU, line=__LINE__,file=__FILE__)) &
- !         call error_handler("IN FieldRegridStore", rc)
     if (do_u_interp==1) then
        if (localpet==0) print*, "- CREATE REGRID uReconstructZonal ROUTEHANDLE"
        method = ESMF_REGRIDMETHOD_BILINEAR

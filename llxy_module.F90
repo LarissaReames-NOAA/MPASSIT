@@ -22,7 +22,7 @@ module llxy_module
    ! The following arrays hold values for all available domains 
    ! NOTE: The entries in the arrays for "domain 0" are used for projection
    !       information of user-specified source data
-   type (proj_info) :: proj_stack
+   type (proj_info),public :: proj_stack
  
    ! The projection and domain that we have computed constants for
    integer :: computed_proj = INVALID

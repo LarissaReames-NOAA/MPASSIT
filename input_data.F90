@@ -17,7 +17,7 @@
  use netcdf
  use utils_mod
  use program_setup
- use misc_definitions_module, only : PROJ_LC
+ use misc_definitions_module, only : PROJ_LC, PROJ_CASSINI
  use model_grid, only             : input_grid,        &
                                     nCells_input, nVert_input,  &
                                     nz_input, nzp1_input, &
@@ -257,7 +257,7 @@
 
  deallocate( dummy)
 
- if (do_u10_interp==1 .and. do_v10_interp==1) then
+ if (do_u10_interp==1 .and. do_v10_interp==1 ) then
     if(localpet==0) print*, "Rotate 10-m winds"
     call rotate_winds(localpet,2)
  endif
@@ -1200,6 +1200,8 @@ end subroutine read_varlist
 
 subroutine rotate_winds(localpet,wind_dim)
    use constants_module
+   use llxy_module, only : proj_stack
+   use map_utils_mod, only : latlon_to_ij, ij_to_latlon 
    implicit none
    integer, intent(in) :: localpet, wind_dim
    real(esmf_kind_r8), pointer, dimension(:,:) :: u_ptr3, v_ptr3
@@ -1209,6 +1211,7 @@ subroutine rotate_winds(localpet,wind_dim)
    !integer, dimension(1)            ::  clb, cub        
    double precision :: sina, cosa
    real :: diff, alpha, utmp3(nz_input), vtmp3(nz_input),utmp2, vtmp2
+   real :: x_v, y_v, xlat_p1, xlon_p1, xlat_m1, xlon_m1, diff_lat, diff_lon
    integer :: i,j,rc
 
    if (wind_dim==3) then
@@ -1253,8 +1256,28 @@ subroutine rotate_winds(localpet,wind_dim)
       ! Calculate the rotation angle, alpha, in radians
       if (proj_code == PROJ_LC) then
          alpha = diff * cone *  rad_per_deg * hemi
+      elseif (proj_code == PROJ_CASSINI) then
+         call latlon_to_ij ( proj_stack, lat(i)*deg_per_rad,  &
+                             lon(i)*deg_per_rad, x_v, y_v )
+         call ij_to_latlon ( proj_stack , &
+                             x_v, y_v + 0.1 , xlat_p1 , xlon_p1 )
+         call ij_to_latlon ( proj_stack , &
+                             x_v, y_v - 0.1 , xlat_m1 , xlon_m1 )
+         diff_lon = xlon_p1-xlon_m1
+         if (diff_lon > 180.) then
+            diff_lon = diff_lon - 360.
+         else if (diff_lon < -180.) then
+            diff_lon = diff_lon + 360.
+         end if
+
+         diff_lat = xlat_p1-xlat_m1
+         alpha =-atan2(   -cos(lat(i)) * diff_lon*rad_per_deg,   &
+                                         diff_lat*rad_per_deg    &
+                      )
+         cosa = cos(alpha)
+         sina = sin(alpha) 
       else
-         alpha = diff * rad_per_deg * hemi 
+        RETURN
       end if
       sina = sin(alpha)
       cosa = cos(alpha)
