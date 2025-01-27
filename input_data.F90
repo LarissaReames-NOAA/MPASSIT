@@ -348,9 +348,9 @@
  !call netcdf_err(error, 'reading config_lsm_scheme')
  if (error .ne. 0) then
     lsm_scheme = 0
- elseif (trim(att_text) == 'noah') then
+ elseif (INDEX(att_text,'noah') .ne. 0)  then
     lsm_scheme = 2
- elseif (trim(att_text) == 'ruc') then
+ elseif (INDEX(att_text, 'ruc') .ne. 0)  then
     lsm_scheme = 3
  endif
 
