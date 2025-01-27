@@ -468,7 +468,7 @@ contains
                call netcdf_err(error ,'SETTING COLLECTIVE ACCESS')     
             endif
 
-            error = nf90_def_var(ncid, 'Z_C', NF90_FLOAT, (/dim_lon, dim_lat, dim_zp1, dim_time/), id_z)
+            error = nf90_def_var(ncid, 'Z_C', NF90_FLOAT, (/dim_lon, dim_lat, dim_z, dim_time/), id_z)
             call netcdf_err(error, 'DEFINING Z_C FIELD')
             error = nf90_put_att(ncid, id_z, "description", "Layer center height above mean sea level")
             call netcdf_err(error, 'DEFINING Z_C NAME')
@@ -1477,7 +1477,7 @@ contains
                    end do
                    end do
 
-                   error = nf90_put_var(ncid, id_z, dum3d(:,:,1:nz_input), start = (/clb(1),clb(2),1,1/), & 
+                   error = nf90_put_var(ncid, id_z, dum3d(:,:,1:nz_input) / 9.81, start = (/clb(1),clb(2),1,1/), & 
                                 count=(/count1, count2, nz_input, 1/))
                    call netcdf_err(error, 'WRITING RECORD')
 
